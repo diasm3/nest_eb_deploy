@@ -1,0 +1,48 @@
+#NAME
+name: Deploy to Elastic Beanstalk (Release)
+#EVENT
+on:
+  pull_request:
+    branches:
+      - 'rel'
+    types:
+      - closed
+
+#JOBS
+jobs:
+  if_merged:
+    if: ${{ github.event.pull_request.merged }}
+    name: Deploy to Elastic Beanstalk Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Timestamp
+        uses: gerred/actions/current-time@master
+        id: current-time
+
+      - name: Run String Replace
+        uses: frabert/replace-string-action@master
+        id: format-time
+        with:
+          pattern: '[:\.]+'
+          string: '${{ steps.current-time.outputs.time }}'
+          replace-with: '-'
+          flags: 'g'
+
+      - name: Generate Deployment Package
+        run: zip -r deploy.zip . -x "**node_modules**" "**.git**" "**.github**"
+
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v21
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
+          aws_secret_key: ${{ secrets.AWS_ACCESS_SECRET_KEY }}
+          application_name: ymyd-biz-backend-jobpost-service
+          environment_name: rel-ymyd-biz-backend-DO-NOT-TOUCH
+          version_label: 'rel-app-${{ steps.format-time.outputs.replaced }}'
+          region: ap-northeast-2
+          deployment_package: deploy.zip
+          wait_for_environment_recovery: 300
+          version_description: ${{ github.event.head_commit.message }}
