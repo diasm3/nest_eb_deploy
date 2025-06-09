@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Elastic Beanstalk &#xc644;&#xc804; &#xc2e0;&#xaddc; &#xc124;&#xc815; &#xb9e4;&#xb274;&#xc5bc;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="elastic-beanstalk-완전-신규-설정-매뉴얼">Elastic Beanstalk 완전 신규 설정 매뉴얼</h1>
+<p><em>새로운 AWS 계정에서 NestJS Docker 프로젝트를 Elastic Beanstalk으로 배포하는 완벽 가이드</em></p>
+<hr>
+<h1 id="elastic-beanstalk-https-설정-가이드">Elastic Beanstalk HTTPS 설정 가이드</h1>
+<h2 id="️-전체-플로우차트">🗺️ 전체 플로우차트</h2>
+<p><img src="file:////Users/semyungpark/Documents/project/aws_deploy_eb/aws_backend/flow-chart.svg" alt="Elastic Beanstalk HTTPS 설정 플로우차트"></p>
+<h2 id="-설정-완료-후-결과">🎯 설정 완료 후 결과</h2>
+<ul>
+<li>✅ NestJS + Docker 애플리케이션</li>
+<li>✅ Elastic Beanstalk 자동 배포</li>
+<li>✅ GitHub Actions CI/CD</li>
+<li>✅ HTTPS 지원 (ALB 기본 포함)</li>
+<li>✅ 도메인 연결 (선택사항)</li>
+</ul>
+<hr>
+<h2 id="-사전-준비사항">📋 사전 준비사항</h2>
+<h3 id="필요한-정보">필요한 정보</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>AWS 계정</strong> (관리자 권한)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>GitHub 계정</strong> 및 저장소</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>도메인</strong> (선택사항)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>개발 환경</strong> (Node.js, Docker, Git)</li>
+</ul>
+<h3 id="소프트웨어-설치">소프트웨어 설치</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 1. Node.js 설치 확인</span>
+node --version  <span class="hljs-comment"># v18 이상</span>
+
+<span class="hljs-comment"># 2. Docker 설치 확인</span>
+docker --version
+
+<span class="hljs-comment"># 3. Git 설치 확인</span>
+git --version
+
+<span class="hljs-comment"># 4. AWS CLI 설치</span>
+<span class="hljs-comment"># macOS: brew install awscli</span>
+<span class="hljs-comment"># Windows: https://aws.amazon.com/cli/</span>
+aws --version
+
+<span class="hljs-comment"># 5. EB CLI 설치</span>
+pip install awsebcli
+eb --version
+</code></pre>
+<hr>
+<h2 id="-1단계-aws-계정-설정">🔧 1단계: AWS 계정 설정</h2>
+<h3 id="11-iam-사용자-생성">1.1 IAM 사용자 생성</h3>
+<p><strong>AWS Console → IAM → 사용자</strong></p>
+<pre><code class="language-yaml"><span class="hljs-string">사용자</span> <span class="hljs-string">이름:</span> <span class="hljs-string">eb-deploy-user</span>
+<span class="hljs-string">액세스</span> <span class="hljs-string">유형:</span> <span class="hljs-string">✅</span> <span class="hljs-string">액세스</span> <span class="hljs-string">키</span> <span class="hljs-bullet">-</span> <span class="hljs-string">프로그래매틱</span> <span class="hljs-string">액세스</span>
+
+<span class="hljs-string">권한</span> <span class="hljs-string">정책</span> <span class="hljs-string">(필수):</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">AWSElasticBeanstalkFullAccess</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">IAMFullAccess</span> <span class="hljs-string">(중요!</span> <span class="hljs-string">서비스</span> <span class="hljs-string">롤</span> <span class="hljs-string">생성용)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">AmazonS3FullAccess</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">AmazonEC2FullAccess</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">ElasticLoadBalancingFullAccess</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">AutoScalingFullAccess</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">AWSCertificateManagerFullAccess</span> <span class="hljs-string">(HTTPS용)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">CloudWatchFullAccess</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">CloudFormationFullAccess</span>
+</code></pre>
+<p><strong>⚠️ 중요:</strong> <code>IAMFullAccess</code> 정책이 없으면 Elastic Beanstalk가 필요한 서비스 롤을 생성할 수 없어 배포가 실패합니다.</p>
+<h3 id="12-aws-자격증명-설정">1.2 AWS 자격증명 설정</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># AWS CLI 설정</span>
+aws configure
+
+<span class="hljs-comment"># 입력할 정보:</span>
+AWS Access Key ID: AKIA..................
+AWS Secret Access Key: ......................
+Default region name: ap-northeast-2
+Default output format: json
+
+<span class="hljs-comment"># 설정 확인</span>
+aws sts get-caller-identity
+</code></pre>
+<h3 id="13-필수-서비스-롤-생성-선택사항">1.3 필수 서비스 롤 생성 (선택사항)</h3>
+<p>IAM 권한이 충분하다면 Elastic Beanstalk가 자동으로 생성하지만, 수동으로 미리 생성할 수도 있습니다:</p>
+<pre><code class="language-bash"><span class="hljs-comment"># EC2 인스턴스 롤 생성</span>
+aws iam create-role \
+    --role-name aws-elasticbeanstalk-ec2-role \
+    --assume-role-policy-document <span class="hljs-string">&#x27;{
+        &quot;Version&quot;: &quot;2012-10-17&quot;,
+        &quot;Statement&quot;: [
+            {
+                &quot;Effect&quot;: &quot;Allow&quot;,
+                &quot;Principal&quot;: {&quot;Service&quot;: &quot;ec2.amazonaws.com&quot;},
+                &quot;Action&quot;: &quot;sts:AssumeRole&quot;
+            }
+        ]
+    }&#x27;</span>
+
+<span class="hljs-comment"># 정책 연결</span>
+aws iam attach-role-policy \
+    --role-name aws-elasticbeanstalk-ec2-role \
+    --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+
+aws iam attach-role-policy \
+    --role-name aws-elasticbeanstalk-ec2-role \
+    --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+
+<span class="hljs-comment"># 인스턴스 프로파일 생성</span>
+aws iam create-instance-profile \
+    --instance-profile-name aws-elasticbeanstalk-ec2-role
+
+aws iam add-role-to-instance-profile \
+    --instance-profile-name aws-elasticbeanstalk-ec2-role \
+    --role-name aws-elasticbeanstalk-ec2-role
+
+<span class="hljs-comment"># 서비스 롤 생성</span>
+aws iam create-role \
+    --role-name aws-elasticbeanstalk-service-role \
+    --assume-role-policy-document <span class="hljs-string">&#x27;{
+        &quot;Version&quot;: &quot;2012-10-17&quot;,
+        &quot;Statement&quot;: [
+            {
+                &quot;Effect&quot;: &quot;Allow&quot;,
+                &quot;Principal&quot;: {&quot;Service&quot;: &quot;elasticbeanstalk.amazonaws.com&quot;},
+                &quot;Action&quot;: &quot;sts:AssumeRole&quot;
+            }
+        ]
+    }&#x27;</span>
+
+aws iam attach-role-policy \
+    --role-name aws-elasticbeanstalk-service-role \
+    --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService
+</code></pre>
+<hr>
+<h2 id="-2단계-nestjs-프로젝트-설정">📦 2단계: NestJS 프로젝트 설정</h2>
+<h3 id="21-프로젝트-생성">2.1 프로젝트 생성</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 새 NestJS 프로젝트 생성</span>
+npx @nestjs/cli new my-app
+<span class="hljs-built_in">cd</span> my-app
+
+<span class="hljs-comment"># 또는 기존 프로젝트 클론</span>
+git <span class="hljs-built_in">clone</span> https://github.com/username/my-nestjs-app
+<span class="hljs-built_in">cd</span> my-nestjs-app
+</code></pre>
+<h3 id="22-프로젝트-구조-설정">2.2 프로젝트 구조 설정</h3>
+<p><strong>디렉토리 구조:</strong></p>
+<pre><code>my-app/
+├── .github/workflows/          # GitHub Actions
+├── .ebextensions/             # EB 설정
+├── src/
+├── Dockerfile
+├── .dockerignore
+├── package.json
+└── README.md
+</code></pre>
+<h3 id="23-핵심-파일-생성">2.3 핵심 파일 생성</h3>
+<p><strong>Dockerfile:</strong></p>
+<pre><code class="language-dockerfile"><span class="hljs-comment"># Multi-stage build 사용</span>
+<span class="hljs-keyword">FROM</span> node:<span class="hljs-number">18</span>-alpine AS builder
+
+<span class="hljs-keyword">WORKDIR</span><span class="language-bash"> /app</span>
+
+<span class="hljs-comment"># 패키지 파일들만 먼저 복사 (캐시 효율성)</span>
+<span class="hljs-keyword">COPY</span><span class="language-bash"> package.json yarn.lock ./</span>
+
+<span class="hljs-comment"># 빌드 의존성만 설치</span>
+<span class="hljs-keyword">RUN</span><span class="language-bash"> yarn install --frozen-lockfile --production=<span class="hljs-literal">false</span></span>
+
+<span class="hljs-comment"># 소스 코드 복사</span>
+<span class="hljs-keyword">COPY</span><span class="language-bash"> . .</span>
+
+<span class="hljs-comment"># 애플리케이션 빌드</span>
+<span class="hljs-keyword">RUN</span><span class="language-bash"> yarn build</span>
+
+<span class="hljs-comment"># Production 의존성만 설치</span>
+<span class="hljs-keyword">RUN</span><span class="language-bash"> yarn install --frozen-lockfile --production=<span class="hljs-literal">true</span> &amp;&amp; yarn cache clean</span>
+
+<span class="hljs-comment"># Production 단계</span>
+<span class="hljs-keyword">FROM</span> node:<span class="hljs-number">18</span>-alpine AS production
+
+<span class="hljs-comment"># 보안을 위한 non-root 유저 생성</span>
+<span class="hljs-keyword">RUN</span><span class="language-bash"> addgroup -g 1001 -S nodejs &amp;&amp; \
+    adduser -S nestjs -u 1001</span>
+
+<span class="hljs-keyword">WORKDIR</span><span class="language-bash"> /app</span>
+
+<span class="hljs-comment"># 빌드된 애플리케이션과 production 의존성만 복사</span>
+<span class="hljs-keyword">COPY</span><span class="language-bash"> --from=builder --<span class="hljs-built_in">chown</span>=nestjs:nodejs /app/dist ./dist</span>
+<span class="hljs-keyword">COPY</span><span class="language-bash"> --from=builder --<span class="hljs-built_in">chown</span>=nestjs:nodejs /app/node_modules ./node_modules</span>
+<span class="hljs-keyword">COPY</span><span class="language-bash"> --from=builder --<span class="hljs-built_in">chown</span>=nestjs:nodejs /app/package.json ./</span>
+
+<span class="hljs-comment"># non-root 유저로 전환</span>
+<span class="hljs-keyword">USER</span> nestjs
+
+<span class="hljs-comment"># 환경 변수 설정</span>
+<span class="hljs-keyword">ENV</span> NODE_ENV=production
+<span class="hljs-keyword">ENV</span> NODE_OPTIONS=<span class="hljs-string">&quot;--max-old-space-size=512&quot;</span>
+<span class="hljs-keyword">ENV</span> PORT=<span class="hljs-number">8080</span>
+
+<span class="hljs-comment"># 포트 노출</span>
+<span class="hljs-keyword">EXPOSE</span> <span class="hljs-number">8080</span>
+
+<span class="hljs-comment"># 헬스체크 추가</span>
+<span class="hljs-keyword">HEALTHCHECK</span><span class="language-bash"> --interval=30s --<span class="hljs-built_in">timeout</span>=3s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || <span class="hljs-built_in">exit</span> 1</span>
+
+<span class="hljs-comment"># 애플리케이션 시작</span>
+<span class="hljs-keyword">CMD</span><span class="language-bash"> [<span class="hljs-string">&quot;node&quot;</span>, <span class="hljs-string">&quot;dist/main&quot;</span>]</span>
+</code></pre>
+<p><strong>.dockerignore:</strong></p>
+<pre><code class="language-dockerignore">node_modules
+npm-debug.log
+yarn-error.log
+.git
+.gitignore
+README.md
+.env
+.nyc_output
+coverage
+.cache
+.vscode
+.idea
+dist
+*.log
+.DS_Store
+Thumbs.db
+.ebextensions
+.elasticbeanstalk
+.github
+</code></pre>
+<p><strong>src/main.ts (중요!):</strong></p>
+<pre><code class="language-typescript"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">NestFactory</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@nestjs/core&#x27;</span>;
+<span class="hljs-keyword">import</span> { <span class="hljs-title class_">AppModule</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;./app.module&#x27;</span>;
+
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">bootstrap</span>(<span class="hljs-params"></span>) {
+  <span class="hljs-keyword">const</span> app = <span class="hljs-keyword">await</span> <span class="hljs-title class_">NestFactory</span>.<span class="hljs-title function_">create</span>(<span class="hljs-title class_">AppModule</span>);
+
+  <span class="hljs-comment">// CORS 설정 (필요시)</span>
+  app.<span class="hljs-title function_">enableCors</span>();
+
+  <span class="hljs-comment">// 포트 설정 (EB에서 환경변수로 제공)</span>
+  <span class="hljs-keyword">const</span> port = process.<span class="hljs-property">env</span>.<span class="hljs-property">PORT</span> || <span class="hljs-number">8080</span>;
+
+  <span class="hljs-comment">// 0.0.0.0으로 바인딩 (중요!)</span>
+  <span class="hljs-keyword">await</span> app.<span class="hljs-title function_">listen</span>(port, <span class="hljs-string">&#x27;0.0.0.0&#x27;</span>);
+
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`🚀 Application is running on: http://0.0.0.0:<span class="hljs-subst">${port}</span>`</span>);
+}
+<span class="hljs-title function_">bootstrap</span>();
+</code></pre>
+<p><strong>src/app.controller.ts (헬스체크):</strong></p>
+<pre><code class="language-typescript"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Controller</span>, <span class="hljs-title class_">Get</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&#x27;@nestjs/common&#x27;</span>;
+
+<span class="hljs-meta">@Controller</span>()
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">AppController</span> {
+  <span class="hljs-meta">@Get</span>()
+  <span class="hljs-title function_">getRoot</span>(): <span class="hljs-built_in">string</span> {
+    <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;NestJS App is running!&#x27;</span>;
+  }
+
+  <span class="hljs-meta">@Get</span>(<span class="hljs-string">&#x27;health&#x27;</span>)
+  <span class="hljs-title function_">healthCheck</span>(<span class="hljs-params"></span>) {
+    <span class="hljs-keyword">return</span> {
+      <span class="hljs-attr">status</span>: <span class="hljs-string">&#x27;ok&#x27;</span>,
+      <span class="hljs-attr">timestamp</span>: <span class="hljs-keyword">new</span> <span class="hljs-title class_">Date</span>().<span class="hljs-title function_">toISOString</span>(),
+      <span class="hljs-attr">uptime</span>: process.<span class="hljs-title function_">uptime</span>(),
+      <span class="hljs-attr">environment</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">NODE_ENV</span> || <span class="hljs-string">&#x27;development&#x27;</span>,
+    };
+  }
+}
+</code></pre>
+<hr>
+<h2 id="️-3단계-elastic-beanstalk-설정">⚙️ 3단계: Elastic Beanstalk 설정</h2>
+<h3 id="31-ebextensions-폴더-생성">3.1 .ebextensions 폴더 생성</h3>
+<pre><code class="language-bash"><span class="hljs-built_in">mkdir</span> .ebextensions
+</code></pre>
+<p><strong>.ebextensions/01-environment.config:</strong></p>
+<pre><code class="language-yaml"><span class="hljs-attr">option_settings:</span>
+  <span class="hljs-attr">aws:autoscaling:launchconfiguration:</span>
+    <span class="hljs-attr">InstanceType:</span> <span class="hljs-string">t3.small</span>
+    <span class="hljs-attr">IamInstanceProfile:</span> <span class="hljs-string">aws-elasticbeanstalk-ec2-role</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:environment:</span>
+    <span class="hljs-attr">EnvironmentType:</span> <span class="hljs-string">LoadBalanced</span>
+    <span class="hljs-attr">LoadBalancerType:</span> <span class="hljs-string">application</span>
+    <span class="hljs-attr">ServiceRole:</span> <span class="hljs-string">aws-elasticbeanstalk-service-role</span>
+  <span class="hljs-attr">aws:autoscaling:asg:</span>
+    <span class="hljs-attr">MinSize:</span> <span class="hljs-number">1</span>
+    <span class="hljs-attr">MaxSize:</span> <span class="hljs-number">3</span>
+  <span class="hljs-attr">aws:autoscaling:updatepolicy:rollingupdate:</span>
+    <span class="hljs-attr">RollingUpdateEnabled:</span> <span class="hljs-literal">true</span>
+    <span class="hljs-attr">MinInstancesInService:</span> <span class="hljs-number">1</span>
+    <span class="hljs-attr">MaxBatchSize:</span> <span class="hljs-number">1</span>
+    <span class="hljs-attr">RollingUpdateType:</span> <span class="hljs-string">Health</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:application:environment:</span>
+    <span class="hljs-attr">NODE_ENV:</span> <span class="hljs-string">production</span>
+    <span class="hljs-attr">PORT:</span> <span class="hljs-number">8080</span>
+</code></pre>
+<p><strong>.ebextensions/02-health.config:</strong></p>
+<pre><code class="language-yaml"><span class="hljs-attr">option_settings:</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:environment:process:default:</span>
+    <span class="hljs-attr">Port:</span> <span class="hljs-number">8080</span>
+    <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTP</span>
+    <span class="hljs-attr">HealthCheckPath:</span> <span class="hljs-string">/health</span>
+    <span class="hljs-attr">HealthCheckIntervalSeconds:</span> <span class="hljs-number">15</span>
+    <span class="hljs-attr">HealthyThresholdCount:</span> <span class="hljs-number">3</span>
+    <span class="hljs-attr">UnhealthyThresholdCount:</span> <span class="hljs-number">5</span>
+    <span class="hljs-attr">HealthCheckTimeoutSeconds:</span> <span class="hljs-number">5</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:healthreporting:system:</span>
+    <span class="hljs-attr">SystemType:</span> <span class="hljs-string">enhanced</span>
+</code></pre>
+<p><strong>.ebextensions/03-logging.config:</strong></p>
+<pre><code class="language-yaml"><span class="hljs-attr">files:</span>
+  <span class="hljs-string">&#x27;/opt/elasticbeanstalk/tasks/taillogs.d/01-app.conf&#x27;</span><span class="hljs-string">:</span>
+    <span class="hljs-attr">mode:</span> <span class="hljs-string">&#x27;000644&#x27;</span>
+    <span class="hljs-attr">owner:</span> <span class="hljs-string">root</span>
+    <span class="hljs-attr">group:</span> <span class="hljs-string">root</span>
+    <span class="hljs-attr">content:</span> <span class="hljs-string">|
+      /var/log/eb-docker/containers/eb-current-app/eb-*-stdouterr.log
+</span>
+<span class="hljs-attr">option_settings:</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:cloudwatch:logs:</span>
+    <span class="hljs-attr">StreamLogs:</span> <span class="hljs-literal">true</span>
+    <span class="hljs-attr">DeleteOnTerminate:</span> <span class="hljs-literal">false</span>
+    <span class="hljs-attr">RetentionInDays:</span> <span class="hljs-number">7</span>
+</code></pre>
+<h3 id="32-eb-초기화">3.2 EB 초기화</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># EB 초기화</span>
+eb init
+
+<span class="hljs-comment"># 설정 입력:</span>
+<span class="hljs-comment"># 1. 리전 선택: ap-northeast-2 (서울)</span>
+<span class="hljs-comment"># 2. 애플리케이션 이름: my-app (원하는 이름)</span>
+<span class="hljs-comment"># 3. 플랫폼: Docker</span>
+<span class="hljs-comment"># 4. 플랫폼 버전: Docker running on 64bit Amazon Linux 2023 (최신)</span>
+<span class="hljs-comment"># 5. CodeCommit: No</span>
+<span class="hljs-comment"># 6. SSH: Yes (키페어 이름 입력 또는 새로 생성)</span>
+</code></pre>
+<h3 id="33-환경-생성">3.3 환경 생성</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 환경 생성 (HTTPS 지원을 위한 ALB 포함)</span>
+eb create production \
+    --elb-type application \
+    --instance_type t3.small \
+    --min-instances 1 \
+    --max-instances 3 \
+    --envvars NODE_ENV=production,PORT=8080 \
+    --service-role aws-elasticbeanstalk-service-role
+
+<span class="hljs-comment"># 또는 기본 환경 생성 후 설정</span>
+eb create production
+</code></pre>
+<p><strong>⚠️ 일반적인 오류 해결:</strong></p>
+<p>만약 다음과 같은 오류가 발생하면:</p>
+<ul>
+<li><code>&quot;option_settings&quot; in one of the configuration files failed validation</code></li>
+<li><code>You can't enable rolling updates for a single-instance environment</code></li>
+<li><code>Insufficient IAM privileges</code></li>
+</ul>
+<p><strong>해결방법:</strong></p>
+<ol>
+<li>IAM 사용자에 <code>IAMFullAccess</code> 정책이 있는지 확인</li>
+<li>위의 1.3 단계의 서비스 롤 생성 명령어를 실행</li>
+<li>환경을 LoadBalanced 타입으로 생성 (Single Instance 대신)</li>
+</ol>
+<h3 id="34-첫-배포">3.4 첫 배포</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 환경 생성 완료 확인</span>
+eb status production
+eb health production
+
+<span class="hljs-comment"># 첫 배포</span>
+eb deploy production --<span class="hljs-built_in">timeout</span> 15
+
+<span class="hljs-comment"># 배포 완료 후 최종 확인</span>
+eb status production
+eb health production
+
+<span class="hljs-comment"># 애플리케이션 열기</span>
+eb open production
+</code></pre>
+<hr>
+<h2 id="-4단계-github-브랜치-전략-및-cicd-설정">🚀 4단계: GitHub 브랜치 전략 및 CI/CD 설정</h2>
+<h3 id="41-브랜치-전략-설정">4.1 브랜치 전략 설정</h3>
+<p><strong>브랜치 구조:</strong></p>
+<pre><code>main (보호됨, 아카이브용)
+├── rel (릴리즈 브랜치) → Production 환경 (최종 배포)
+├── dev (개발 브랜치) → Development 환경
+└── feature/* (기능 브랜치) → 로컬 개발
+</code></pre>
+<p><strong>워크플로우:</strong></p>
+<pre><code>1. feature/new-feature → dev (PR) → Development 배포
+2. dev → rel (PR) → Production 배포 (최종)
+</code></pre>
+<h3 id="42-브랜치-생성-및-보호-설정">4.2 브랜치 생성 및 보호 설정</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 로컬에서 브랜치 생성</span>
+git checkout -b dev
+git push origin dev
+
+git checkout -b rel
+git push origin rel
+
+<span class="hljs-comment"># main 브랜치로 돌아가기 (아카이브용)</span>
+git checkout main
+</code></pre>
+<p><strong>GitHub에서 브랜치 보호 설정:</strong></p>
+<pre><code>Repository → Settings → Branches → Add rule
+
+rel 브랜치 (최종 배포):
+✅ Require pull request reviews before merging
+✅ Require status checks to pass before merging
+✅ Require branches to be up to date before merging
+✅ Include administrators
+
+dev 브랜치:
+✅ Require pull request reviews before merging (optional)
+✅ Require status checks to pass before merging (optional)
+
+main 브랜치 (아카이브):
+✅ Require pull request reviews before merging
+✅ Include administrators
+</code></pre>
+<h3 id="43-github-secrets-설정">4.3 GitHub Secrets 설정</h3>
+<p><strong>GitHub Repository → Settings → Secrets and variables → Actions</strong></p>
+<pre><code class="language-yaml"><span class="hljs-string">Secrets</span> <span class="hljs-string">추가:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">AWS_ACCESS_KEY:</span> <span class="hljs-string">(IAM</span> <span class="hljs-string">사용자의</span> <span class="hljs-string">Access</span> <span class="hljs-string">Key</span> <span class="hljs-string">ID)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">AWS_ACCESS_SECRET_KEY:</span> <span class="hljs-string">(IAM</span> <span class="hljs-string">사용자의</span> <span class="hljs-string">Secret</span> <span class="hljs-string">Access</span> <span class="hljs-string">Key)</span>
+
+  <span class="hljs-comment"># 환경별 설정 (선택사항)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">DEV_APP_NAME:</span> <span class="hljs-string">my-app</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">DEV_ENV_NAME:</span> <span class="hljs-string">development</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">PROD_APP_NAME:</span> <span class="hljs-string">my-app</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">PROD_ENV_NAME:</span> <span class="hljs-string">production</span>
+</code></pre>
+<h3 id="44-github-actions-워크플로우-파일-생성">4.4 GitHub Actions 워크플로우 파일 생성</h3>
+<p><strong>.github/workflows/deploy-dev.yml</strong> (dev 브랜치용):</p>
+<pre><code class="language-yaml"><span class="hljs-attr">name:</span> <span class="hljs-string">Deploy</span> <span class="hljs-string">to</span> <span class="hljs-string">Development</span>
+<span class="hljs-attr">on:</span>
+  <span class="hljs-attr">pull_request:</span>
+    <span class="hljs-attr">branches:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">dev</span>
+    <span class="hljs-attr">types:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">closed</span>
+
+<span class="hljs-attr">jobs:</span>
+  <span class="hljs-attr">deploy-dev:</span>
+    <span class="hljs-attr">if:</span> <span class="hljs-string">github.event.pull_request.merged</span> <span class="hljs-string">==</span> <span class="hljs-literal">true</span>
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Checkout</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Get</span> <span class="hljs-string">Timestamp</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">gerred/actions/current-time@master</span>
+        <span class="hljs-attr">id:</span> <span class="hljs-string">current-time</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Run</span> <span class="hljs-string">String</span> <span class="hljs-string">Replace</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">frabert/replace-string-action@master</span>
+        <span class="hljs-attr">id:</span> <span class="hljs-string">format-time</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">pattern:</span> <span class="hljs-string">&#x27;[:\.]+&#x27;</span>
+          <span class="hljs-attr">string:</span> <span class="hljs-string">&#x27;$<span class="hljs-template-variable">{{ steps.current-time.outputs.time }}</span>&#x27;</span>
+          <span class="hljs-attr">replace-with:</span> <span class="hljs-string">&#x27;-&#x27;</span>
+          <span class="hljs-attr">flags:</span> <span class="hljs-string">&#x27;g&#x27;</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Generate</span> <span class="hljs-string">Deployment</span> <span class="hljs-string">Package</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">zip</span> <span class="hljs-string">-r</span> <span class="hljs-string">deploy.zip</span> <span class="hljs-string">.</span> <span class="hljs-string">-x</span> <span class="hljs-string">&quot;**node_modules**&quot;</span> <span class="hljs-string">&quot;**.git**&quot;</span> <span class="hljs-string">&quot;**.github**&quot;</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Deploy</span> <span class="hljs-string">to</span> <span class="hljs-string">Development</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">einaregilsson/beanstalk-deploy@v21</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">aws_access_key:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.AWS_ACCESS_KEY</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">aws_secret_key:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.AWS_ACCESS_SECRET_KEY</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">application_name:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.DEV_APP_NAME</span> <span class="hljs-string">||</span> <span class="hljs-string">&#x27;my-app&#x27;</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">environment_name:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.DEV_ENV_NAME</span> <span class="hljs-string">||</span> <span class="hljs-string">&#x27;development&#x27;</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">version_label:</span> <span class="hljs-string">&#x27;dev-$<span class="hljs-template-variable">{{ steps.format-time.outputs.replaced }}</span>&#x27;</span>
+          <span class="hljs-attr">region:</span> <span class="hljs-string">ap-northeast-2</span>
+          <span class="hljs-attr">deployment_package:</span> <span class="hljs-string">deploy.zip</span>
+          <span class="hljs-attr">wait_for_environment_recovery:</span> <span class="hljs-number">300</span>
+          <span class="hljs-attr">version_description:</span> <span class="hljs-string">&#x27;Dev: $<span class="hljs-template-variable">{{ github.event.pull_request.title }}</span>&#x27;</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Comment</span> <span class="hljs-string">PR</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/github-script@v6</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">script:</span> <span class="hljs-string">|
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: &#x27;🚀 Development 환경에 배포 완료!\n배포 버전: dev-${{ steps.format-time.outputs.replaced }}&#x27;
+            })
+</span></code></pre>
+<p><strong>.github/workflows/deploy-rel.yml</strong> (rel 브랜치용 - 최종 배포):</p>
+<pre><code class="language-yaml"><span class="hljs-attr">name:</span> <span class="hljs-string">Deploy</span> <span class="hljs-string">to</span> <span class="hljs-string">Production</span>
+<span class="hljs-attr">on:</span>
+  <span class="hljs-attr">pull_request:</span>
+    <span class="hljs-attr">branches:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">rel</span>
+    <span class="hljs-attr">types:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">closed</span>
+
+<span class="hljs-attr">jobs:</span>
+  <span class="hljs-attr">deploy-production:</span>
+    <span class="hljs-attr">if:</span> <span class="hljs-string">github.event.pull_request.merged</span> <span class="hljs-string">==</span> <span class="hljs-literal">true</span>
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Checkout</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Get</span> <span class="hljs-string">Timestamp</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">gerred/actions/current-time@master</span>
+        <span class="hljs-attr">id:</span> <span class="hljs-string">current-time</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Run</span> <span class="hljs-string">String</span> <span class="hljs-string">Replace</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">frabert/replace-string-action@master</span>
+        <span class="hljs-attr">id:</span> <span class="hljs-string">format-time</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">pattern:</span> <span class="hljs-string">&#x27;[:\.]+&#x27;</span>
+          <span class="hljs-attr">string:</span> <span class="hljs-string">&#x27;$<span class="hljs-template-variable">{{ steps.current-time.outputs.time }}</span>&#x27;</span>
+          <span class="hljs-attr">replace-with:</span> <span class="hljs-string">&#x27;-&#x27;</span>
+          <span class="hljs-attr">flags:</span> <span class="hljs-string">&#x27;g&#x27;</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Generate</span> <span class="hljs-string">Deployment</span> <span class="hljs-string">Package</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">zip</span> <span class="hljs-string">-r</span> <span class="hljs-string">deploy.zip</span> <span class="hljs-string">.</span> <span class="hljs-string">-x</span> <span class="hljs-string">&quot;**node_modules**&quot;</span> <span class="hljs-string">&quot;**.git**&quot;</span> <span class="hljs-string">&quot;**.github**&quot;</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Deploy</span> <span class="hljs-string">to</span> <span class="hljs-string">Production</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">einaregilsson/beanstalk-deploy@v21</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">aws_access_key:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.AWS_ACCESS_KEY</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">aws_secret_key:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.AWS_ACCESS_SECRET_KEY</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">application_name:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.PROD_APP_NAME</span> <span class="hljs-string">||</span> <span class="hljs-string">&#x27;my-app&#x27;</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">environment_name:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.PROD_ENV_NAME</span> <span class="hljs-string">||</span> <span class="hljs-string">&#x27;production&#x27;</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">version_label:</span> <span class="hljs-string">&#x27;prod-$<span class="hljs-template-variable">{{ steps.format-time.outputs.replaced }}</span>&#x27;</span>
+          <span class="hljs-attr">region:</span> <span class="hljs-string">ap-northeast-2</span>
+          <span class="hljs-attr">deployment_package:</span> <span class="hljs-string">deploy.zip</span>
+          <span class="hljs-attr">wait_for_environment_recovery:</span> <span class="hljs-number">300</span>
+          <span class="hljs-attr">version_description:</span> <span class="hljs-string">&#x27;Production: $<span class="hljs-template-variable">{{ github.event.pull_request.title }}</span>&#x27;</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Create</span> <span class="hljs-string">Release</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/create-release@v1</span>
+        <span class="hljs-attr">env:</span>
+          <span class="hljs-attr">GITHUB_TOKEN:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.GITHUB_TOKEN</span> <span class="hljs-string">}}</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">tag_name:</span> <span class="hljs-string">v${{</span> <span class="hljs-string">steps.format-time.outputs.replaced</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">release_name:</span> <span class="hljs-string">Release</span> <span class="hljs-string">v${{</span> <span class="hljs-string">steps.format-time.outputs.replaced</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">body:</span> <span class="hljs-string">|
+            🎉 Production 배포 완료!
+</span>
+            <span class="hljs-string">**배포</span> <span class="hljs-string">내용:**</span> <span class="hljs-string">${{</span> <span class="hljs-string">github.event.pull_request.title</span> <span class="hljs-string">}}</span>
+            <span class="hljs-string">**배포</span> <span class="hljs-string">버전:**</span> <span class="hljs-string">prod-${{</span> <span class="hljs-string">steps.format-time.outputs.replaced</span> <span class="hljs-string">}}</span>
+            <span class="hljs-string">**배포</span> <span class="hljs-string">시간:**</span> <span class="hljs-string">${{</span> <span class="hljs-string">steps.current-time.outputs.time</span> <span class="hljs-string">}}</span>
+          <span class="hljs-attr">draft:</span> <span class="hljs-literal">false</span>
+          <span class="hljs-attr">prerelease:</span> <span class="hljs-literal">false</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Notify</span> <span class="hljs-string">Team</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/github-script@v6</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">script:</span> <span class="hljs-string">|
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: &#x27;🎉 **Production 배포 완료!**\n\n배포 버전: prod-${{ steps.format-time.outputs.replaced }}\n릴리즈: v${{ steps.format-time.outputs.replaced }}\n\n모든 팀원에게 배포 완료를 알려주세요! 🚀&#x27;
+            })
+</span></code></pre>
+<p><strong>.github/workflows/deploy-production.yml</strong> (main 브랜치용 - 아카이브):</p>
+<pre><code class="language-yaml"><span class="hljs-comment"># 이 워크플로우는 필요시에만 사용 (아카이브 목적)</span>
+<span class="hljs-attr">name:</span> <span class="hljs-string">Archive</span> <span class="hljs-string">to</span> <span class="hljs-string">Main</span>
+<span class="hljs-attr">on:</span>
+  <span class="hljs-attr">workflow_dispatch:</span> <span class="hljs-comment"># 수동 실행만 허용</span>
+    <span class="hljs-attr">inputs:</span>
+      <span class="hljs-attr">reason:</span>
+        <span class="hljs-attr">description:</span> <span class="hljs-string">&#x27;Archive reason&#x27;</span>
+        <span class="hljs-attr">required:</span> <span class="hljs-literal">true</span>
+        <span class="hljs-attr">type:</span> <span class="hljs-string">string</span>
+
+<span class="hljs-attr">jobs:</span>
+  <span class="hljs-attr">archive-to-main:</span>
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Checkout</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Create</span> <span class="hljs-string">Archive</span> <span class="hljs-string">Tag</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">|
+          git config --local user.email &quot;action@github.com&quot;
+          git config --local user.name &quot;GitHub Action&quot;
+</span>
+          <span class="hljs-string">TAG=&quot;archive-$(date</span> <span class="hljs-string">&#x27;+%Y%m%d-%H%M%S&#x27;</span><span class="hljs-string">)&quot;</span>
+          <span class="hljs-string">git</span> <span class="hljs-string">tag</span> <span class="hljs-string">-a</span> <span class="hljs-string">&quot;$TAG&quot;</span> <span class="hljs-string">-m</span> <span class="hljs-string">&quot;Archive: $<span class="hljs-template-variable">{{ github.event.inputs.reason }}</span>&quot;</span>
+          <span class="hljs-string">git</span> <span class="hljs-string">push</span> <span class="hljs-string">origin</span> <span class="hljs-string">&quot;$TAG&quot;</span>
+
+          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🏷️ Archive 태그 생성: $TAG&quot;</span>
+</code></pre>
+<h3 id="45-환경별-eb-환경-생성-https-지원">4.5 환경별 EB 환경 생성 (HTTPS 지원)</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># Development 환경 생성 (ALB 포함 - HTTPS 준비)</span>
+eb create development \
+    --elb-type application \
+    --instance_type t3.micro \
+    --min-instances 1 \
+    --max-instances 1 \
+    --envvars NODE_ENV=development,PORT=8080,LOG_LEVEL=debug \
+    --service-role aws-elasticbeanstalk-service-role
+
+<span class="hljs-comment"># Production 환경 생성 (ALB 포함 - 고가용성 + HTTPS)</span>
+eb create production \
+    --elb-type application \
+    --instance_type t3.medium \
+    --min-instances 2 \
+    --max-instances 5 \
+    --envvars NODE_ENV=production,PORT=8080,LOG_LEVEL=warn \
+    --keyname prod-keypair \
+    --tags Environment=Production,SSL=Ready \
+    --service-role aws-elasticbeanstalk-service-role
+
+<span class="hljs-comment"># 최소 비용 개발환경 (HTTPS 불가, 서비스 롤 필요)</span>
+eb create development-minimal \
+    --single \
+    --instance_type t3.micro \
+    --envvars NODE_ENV=development,PORT=8080 \
+    --service-role aws-elasticbeanstalk-service-role
+</code></pre>
+<p><strong>⚠️ 환경 생성 시 주의사항:</strong></p>
+<ul>
+<li><code>--service-role</code> 옵션을 반드시 포함하여 IAM 권한 문제 방지</li>
+<li>Single Instance 환경에서는 Rolling Update 설정을 .ebextensions에서 제거해야 함</li>
+<li>IAMFullAccess 정책이 없으면 서비스 롤 자동 생성 실패</li>
+</ul>
+<hr>
+<h2 id="-5단계-https-설정-aws-공식-문서-기반">🔐 5단계: HTTPS 설정 (AWS 공식 문서 기반)</h2>
+<h3 id="51-route-53-도메인-및-acm-인증서-준비">5.1 Route 53 도메인 및 ACM 인증서 준비</h3>
+<h4 id="511-도메인-확인">5.1.1 도메인 확인</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># Route 53에서 구매한 도메인 확인</span>
+aws route53 list-hosted-zones --query <span class="hljs-string">&#x27;HostedZones[*].{Name:Name,Id:Id}&#x27;</span>
+</code></pre>
+<h4 id="512-acm-인증서-요청">5.1.2 ACM 인증서 요청</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># SSL 인증서 요청 (DNS 검증 방식)</span>
+aws acm request-certificate \
+    --domain-name yourdomain.com \
+    --subject-alternative-names <span class="hljs-string">&quot;*.yourdomain.com&quot;</span> \
+    --validation-method DNS \
+    --region ap-northeast-2
+
+<span class="hljs-comment"># 요청된 인증서 목록 확인</span>
+aws acm list-certificates --region ap-northeast-2
+
+<span class="hljs-comment"># 특정 인증서의 DNS 검증 레코드 확인</span>
+aws acm describe-certificate \
+    --certificate-arn arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID \
+    --region ap-northeast-2
+</code></pre>
+<h4 id="513-route-53에-dns-검증-레코드-추가">5.1.3 Route 53에 DNS 검증 레코드 추가</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># ACM에서 제공한 CNAME 레코드를 Route 53에 추가</span>
+aws route53 change-resource-record-sets \
+    --hosted-zone-id Z1D633PJN98FT9 \
+    --change-batch <span class="hljs-string">&#x27;{
+        &quot;Changes&quot;: [{
+            &quot;Action&quot;: &quot;CREATE&quot;,
+            &quot;ResourceRecordSet&quot;: {
+                &quot;Name&quot;: &quot;_VALIDATION_RECORD_NAME.yourdomain.com&quot;,
+                &quot;Type&quot;: &quot;CNAME&quot;,
+                &quot;TTL&quot;: 300,
+                &quot;ResourceRecords&quot;: [{&quot;Value&quot;: &quot;VALIDATION_RECORD_VALUE.acm-validations.aws.&quot;}]
+            }
+        }]
+    }&#x27;</span>
+
+<span class="hljs-comment"># 인증서 검증 완료까지 대기 (보통 5-10분)</span>
+aws acm <span class="hljs-built_in">wait</span> certificate-validated \
+    --certificate-arn arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID \
+    --region ap-northeast-2
+</code></pre>
+<h3 id="52-elastic-beanstalk에서-https-설정-aws-공식-방법">5.2 Elastic Beanstalk에서 HTTPS 설정 (AWS 공식 방법)</h3>
+<h4 id="521-방법-1-기본-https-리스너만-설정">5.2.1 방법 1: 기본 HTTPS 리스너만 설정</h4>
+<p><strong>.ebextensions/05-https-basic.config:</strong></p>
+<pre><code class="language-yaml"><span class="hljs-comment">####################################################################################################</span>
+<span class="hljs-comment">#### Basic HTTPS Configuration - AWS 공식 문서 기반</span>
+<span class="hljs-comment">#### Application Load Balancer에서만 동작 (Classic/Network Load Balancer 지원 안함)</span>
+<span class="hljs-comment">#### 콘솔에서 이미 443 리스너를 만들었다면 이 설정을 사용하지 마세요</span>
+<span class="hljs-comment">####################################################################################################</span>
+
+<span class="hljs-attr">option_settings:</span>
+  <span class="hljs-attr">aws:elbv2:listener:443:</span>
+    <span class="hljs-attr">ListenerEnabled:</span> <span class="hljs-string">&#x27;true&#x27;</span>
+    <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTPS</span>
+    <span class="hljs-attr">SSLCertificateArns:</span> <span class="hljs-string">arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID</span>
+    <span class="hljs-attr">SSLPolicy:</span> <span class="hljs-string">ELBSecurityPolicy-TLS13-1-2-2021-06</span>
+</code></pre>
+<h4 id="522-방법-2-https--http-리다이렉트-완전한-설정">5.2.2 방법 2: HTTPS + HTTP 리다이렉트 (완전한 설정)</h4>
+<p><strong>.ebextensions/05-https-full.config:</strong></p>
+<pre><code class="language-yaml"><span class="hljs-comment">####################################################################################################</span>
+<span class="hljs-comment">#### Complete HTTPS Configuration with HTTP Redirect - AWS 공식 문서 기반</span>
+<span class="hljs-comment">#### Application Load Balancer에서만 동작 (Classic/Network Load Balancer 지원 안함)</span>
+<span class="hljs-comment">#### 콘솔에서 이미 443 리스너를 만들었다면 이 설정을 사용하지 마세요</span>
+<span class="hljs-comment">####################################################################################################</span>
+
+<span class="hljs-attr">option_settings:</span>
+  <span class="hljs-comment"># HTTPS 리스너 설정 (443 포트)</span>
+  <span class="hljs-attr">aws:elbv2:listener:443:</span>
+    <span class="hljs-attr">ListenerEnabled:</span> <span class="hljs-string">&#x27;true&#x27;</span>
+    <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTPS</span>
+    <span class="hljs-attr">SSLCertificateArns:</span> <span class="hljs-string">arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID</span>
+    <span class="hljs-attr">SSLPolicy:</span> <span class="hljs-string">ELBSecurityPolicy-TLS13-1-2-2021-06</span>
+
+<span class="hljs-attr">Resources:</span>
+  <span class="hljs-comment"># HTTP(80) → HTTPS(443) 리다이렉트 설정</span>
+  <span class="hljs-attr">AWSEBV2LoadBalancerListener:</span>
+    <span class="hljs-attr">Type:</span> <span class="hljs-string">&#x27;AWS::ElasticLoadBalancingV2::Listener&#x27;</span>
+    <span class="hljs-attr">Properties:</span>
+      <span class="hljs-attr">DefaultActions:</span>
+        <span class="hljs-bullet">-</span> <span class="hljs-attr">Type:</span> <span class="hljs-string">redirect</span>
+          <span class="hljs-attr">RedirectConfig:</span>
+            <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTPS</span>
+            <span class="hljs-attr">Port:</span> <span class="hljs-string">&#x27;443&#x27;</span>
+            <span class="hljs-attr">Host:</span> <span class="hljs-string">&#x27;#{host}&#x27;</span>
+            <span class="hljs-attr">Path:</span> <span class="hljs-string">&#x27;/#{path}&#x27;</span>
+            <span class="hljs-attr">Query:</span> <span class="hljs-string">&#x27;#{query}&#x27;</span>
+            <span class="hljs-attr">StatusCode:</span> <span class="hljs-string">HTTP_301</span>
+      <span class="hljs-attr">LoadBalancerArn:</span>
+        <span class="hljs-attr">Ref:</span> <span class="hljs-string">AWSEBV2LoadBalancer</span>
+      <span class="hljs-attr">Port:</span> <span class="hljs-number">80</span>
+      <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTP</span>
+</code></pre>
+<h4 id="523-방법-3-별도-파일로-분리-단계별-적용">5.2.3 방법 3: 별도 파일로 분리 (단계별 적용)</h4>
+<p><strong>Step 1: .ebextensions/05-https-listener.config</strong></p>
+<pre><code class="language-yaml"><span class="hljs-comment">####################################################################################################</span>
+<span class="hljs-comment">#### HTTPS Listener Only - 단계별 적용용</span>
+<span class="hljs-comment">#### 먼저 HTTPS 리스너만 설정하고 동작 확인 후 리다이렉트 추가</span>
+<span class="hljs-comment">####################################################################################################</span>
+
+<span class="hljs-attr">option_settings:</span>
+  <span class="hljs-attr">aws:elbv2:listener:443:</span>
+    <span class="hljs-attr">ListenerEnabled:</span> <span class="hljs-string">&#x27;true&#x27;</span>
+    <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTPS</span>
+    <span class="hljs-attr">SSLCertificateArns:</span> <span class="hljs-string">arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID</span>
+    <span class="hljs-attr">SSLPolicy:</span> <span class="hljs-string">ELBSecurityPolicy-TLS13-1-2-2021-06</span>
+</code></pre>
+<p><strong>Step 2: .ebextensions/06-https-redirect.config</strong></p>
+<pre><code class="language-yaml"><span class="hljs-comment">####################################################################################################</span>
+<span class="hljs-comment">#### HTTP to HTTPS Redirect Only - AWS 공식 예제 기반</span>
+<span class="hljs-comment">#### 443 리스너가 이미 존재해야 함 (위의 설정 또는 콘솔에서 생성)</span>
+<span class="hljs-comment">####################################################################################################</span>
+
+<span class="hljs-attr">Resources:</span>
+  <span class="hljs-attr">AWSEBV2LoadBalancerListener:</span>
+    <span class="hljs-attr">Type:</span> <span class="hljs-string">&#x27;AWS::ElasticLoadBalancingV2::Listener&#x27;</span>
+    <span class="hljs-attr">Properties:</span>
+      <span class="hljs-attr">DefaultActions:</span>
+        <span class="hljs-bullet">-</span> <span class="hljs-attr">Type:</span> <span class="hljs-string">redirect</span>
+          <span class="hljs-attr">RedirectConfig:</span>
+            <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTPS</span>
+            <span class="hljs-attr">Port:</span> <span class="hljs-string">&#x27;443&#x27;</span>
+            <span class="hljs-attr">Host:</span> <span class="hljs-string">&#x27;#{host}&#x27;</span>
+            <span class="hljs-attr">Path:</span> <span class="hljs-string">&#x27;/#{path}&#x27;</span>
+            <span class="hljs-attr">Query:</span> <span class="hljs-string">&#x27;#{query}&#x27;</span>
+            <span class="hljs-attr">StatusCode:</span> <span class="hljs-string">HTTP_301</span>
+      <span class="hljs-attr">LoadBalancerArn:</span>
+        <span class="hljs-attr">Ref:</span> <span class="hljs-string">AWSEBV2LoadBalancer</span>
+      <span class="hljs-attr">Port:</span> <span class="hljs-number">80</span>
+      <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTP</span>
+</code></pre>
+<h3 id="53-route-53에서-도메인-연결">5.3 Route 53에서 도메인 연결</h3>
+<h4 id="531-elastic-beanstalk-alb-dns-이름-확인">5.3.1 Elastic Beanstalk ALB DNS 이름 확인</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># EB 환경의 ALB DNS 이름 확인</span>
+eb status production | grep CNAME
+
+<span class="hljs-comment"># 또는 AWS CLI로 확인</span>
+aws elasticbeanstalk describe-environments \
+    --environment-names production \
+    --query <span class="hljs-string">&#x27;Environments[0].CNAME&#x27;</span>
+</code></pre>
+<h4 id="532-route-53-a-레코드-생성-alias">5.3.2 Route 53 A 레코드 생성 (Alias)</h4>
+<p><strong>⚠️ 중요: 리전별 ALB Hosted Zone ID</strong></p>
+<pre><code class="language-bash"><span class="hljs-comment"># 리전별 ALB Hosted Zone ID (정확한 값 필수!)</span>
+<span class="hljs-comment"># 서울 (ap-northeast-2): ZWKZPGTI48KDX</span>
+<span class="hljs-comment"># 버지니아 (us-east-1): Z35SXDOTRQ7X7K</span>
+<span class="hljs-comment"># 오하이오 (us-east-2): Z3AADJGX6KTTL2</span>
+<span class="hljs-comment"># 아일랜드 (eu-west-1): Z32O12XQLNTSW2</span>
+</code></pre>
+<pre><code class="language-bash"><span class="hljs-comment"># Route 53에 A 레코드 (Alias) 생성</span>
+aws route53 change-resource-record-sets \
+    --hosted-zone-id Z1D633PJN98FT9 \
+    --change-batch <span class="hljs-string">&#x27;{
+        &quot;Changes&quot;: [
+            {
+                &quot;Action&quot;: &quot;CREATE&quot;,
+                &quot;ResourceRecordSet&quot;: {
+                    &quot;Name&quot;: &quot;yourdomain.com&quot;,
+                    &quot;Type&quot;: &quot;A&quot;,
+                    &quot;AliasTarget&quot;: {
+                        &quot;DNSName&quot;: &quot;awseb-AWSEB-XXXXXXXXXXXXXXXX-XXXXXXXXX.ap-northeast-2.elb.amazonaws.com&quot;,
+                        &quot;EvaluateTargetHealth&quot;: true,
+                        &quot;HostedZoneId&quot;: &quot;ZWKZPGTI48KDX&quot;
+                    }
+                }
+            },
+            {
+                &quot;Action&quot;: &quot;CREATE&quot;,
+                &quot;ResourceRecordSet&quot;: {
+                    &quot;Name&quot;: &quot;www.yourdomain.com&quot;,
+                    &quot;Type&quot;: &quot;A&quot;,
+                    &quot;AliasTarget&quot;: {
+                        &quot;DNSName&quot;: &quot;awseb-AWSEB-XXXXXXXXXXXXXXXX-XXXXXXXXX.ap-northeast-2.elb.amazonaws.com&quot;,
+                        &quot;EvaluateTargetHealth&quot;: true,
+                        &quot;HostedZoneId&quot;: &quot;ZWKZPGTI48KDX&quot;
+                    }
+                }
+            }
+        ]
+    }&#x27;</span>
+</code></pre>
+<h3 id="54-배포-및-확인">5.4 배포 및 확인</h3>
+<h4 id="541-설정-배포">5.4.1 설정 배포</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># HTTPS 설정 배포</span>
+eb deploy production --<span class="hljs-built_in">timeout</span> 20
+
+<span class="hljs-comment"># 배포 상태 확인</span>
+eb status production
+eb health production
+</code></pre>
+<h4 id="542-https-동작-확인">5.4.2 HTTPS 동작 확인</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># HTTP 접속 시 HTTPS로 리다이렉트 확인</span>
+curl -I http://yourdomain.com
+
+<span class="hljs-comment"># HTTPS 접속 확인</span>
+curl -I https://yourdomain.com
+
+<span class="hljs-comment"># SSL 인증서 정보 확인</span>
+openssl s_client -connect yourdomain.com:443 -servername yourdomain.com
+
+<span class="hljs-comment"># 보안 헤더 확인 (추가 설정한 경우)</span>
+curl -I https://yourdomain.com | grep -E <span class="hljs-string">&quot;(Strict-Transport|X-Frame|X-Content)&quot;</span>
+</code></pre>
+<h4 id="543-alb-리스너-확인">5.4.3 ALB 리스너 확인</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># ALB 리스너 목록 확인</span>
+aws elbv2 describe-listeners \
+    --load-balancer-arn $(aws elbv2 describe-load-balancers --query <span class="hljs-string">&#x27;LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn&#x27;</span> --output text)
+
+<span class="hljs-comment"># HTTP 리다이렉트 규칙 확인</span>
+aws elbv2 describe-rules \
+    --listener-arn $(aws elbv2 describe-listeners --load-balancer-arn YOUR-ALB-ARN --query <span class="hljs-string">&#x27;Listeners[?Port==`80`].ListenerArn&#x27;</span> --output text)
+</code></pre>
+<h3 id="55-고급-https-설정-선택사항">5.5 고급 HTTPS 설정 (선택사항)</h3>
+<h4 id="551-보안-헤더-추가">5.5.1 보안 헤더 추가</h4>
+<p><strong>.ebextensions/07-security-headers.config:</strong></p>
+<pre><code class="language-yaml"><span class="hljs-comment">####################################################################################################</span>
+<span class="hljs-comment">#### Security Headers Configuration</span>
+<span class="hljs-comment">#### HSTS, CSP 등 보안 헤더 추가 (Nginx 기반 플랫폼용)</span>
+<span class="hljs-comment">####################################################################################################</span>
+
+<span class="hljs-attr">files:</span>
+  <span class="hljs-string">&#x27;/etc/nginx/conf.d/security-headers.conf&#x27;</span><span class="hljs-string">:</span>
+    <span class="hljs-attr">mode:</span> <span class="hljs-string">&#x27;000644&#x27;</span>
+    <span class="hljs-attr">owner:</span> <span class="hljs-string">root</span>
+    <span class="hljs-attr">group:</span> <span class="hljs-string">root</span>
+    <span class="hljs-attr">content:</span> <span class="hljs-string">|
+      # Security Headers
+      add_header Strict-Transport-Security &quot;max-age=31536000; includeSubDomains; preload&quot; always;
+      add_header X-Frame-Options DENY always;
+      add_header X-Content-Type-Options nosniff always;
+      add_header Referrer-Policy strict-origin-when-cross-origin always;
+      add_header X-XSS-Protection &quot;1; mode=block&quot; always;
+      add_header Content-Security-Policy &quot;default-src &#x27;self&#x27;; script-src &#x27;self&#x27; &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27;; style-src &#x27;self&#x27; &#x27;unsafe-inline&#x27;;&quot; always;
+</span>
+<span class="hljs-attr">container_commands:</span>
+  <span class="hljs-attr">01_reload_nginx:</span>
+    <span class="hljs-attr">command:</span> <span class="hljs-string">&#x27;service nginx reload&#x27;</span>
+    <span class="hljs-attr">leader_only:</span> <span class="hljs-literal">true</span>
+</code></pre>
+<h4 id="552-다중-도메인-지원">5.5.2 다중 도메인 지원</h4>
+<p><strong>.ebextensions/08-multi-domain.config:</strong></p>
+<pre><code class="language-yaml"><span class="hljs-comment">####################################################################################################</span>
+<span class="hljs-comment">#### Multi-Domain Support</span>
+<span class="hljs-comment">#### 여러 도메인에서 동일한 애플리케이션 접근 허용</span>
+<span class="hljs-comment">####################################################################################################</span>
+
+<span class="hljs-attr">Resources:</span>
+  <span class="hljs-attr">AWSEBV2LoadBalancerListenerRuleAdditional:</span>
+    <span class="hljs-attr">Type:</span> <span class="hljs-string">AWS::ElasticLoadBalancingV2::ListenerRule</span>
+    <span class="hljs-attr">Properties:</span>
+      <span class="hljs-attr">Actions:</span>
+        <span class="hljs-bullet">-</span> <span class="hljs-attr">Type:</span> <span class="hljs-string">forward</span>
+          <span class="hljs-attr">TargetGroupArn:</span>
+            <span class="hljs-attr">Ref:</span> <span class="hljs-string">AWSEBV2LoadBalancerTargetGroup</span>
+      <span class="hljs-attr">Conditions:</span>
+        <span class="hljs-bullet">-</span> <span class="hljs-attr">Field:</span> <span class="hljs-string">host-header</span>
+          <span class="hljs-attr">Values:</span>
+            <span class="hljs-bullet">-</span> <span class="hljs-string">api.yourdomain.com</span>
+            <span class="hljs-bullet">-</span> <span class="hljs-string">admin.yourdomain.com</span>
+            <span class="hljs-bullet">-</span> <span class="hljs-string">staging.yourdomain.com</span>
+      <span class="hljs-attr">ListenerArn:</span>
+        <span class="hljs-attr">Ref:</span> <span class="hljs-string">AWSEBV2LoadBalancerListener443</span>
+      <span class="hljs-attr">Priority:</span> <span class="hljs-number">10</span>
+</code></pre>
+<h3 id="56-https-설정-확인-스크립트">5.6 HTTPS 설정 확인 스크립트</h3>
+<p><strong><a href="http://check-https.sh">check-https.sh</a>:</strong></p>
+<pre><code class="language-bash"><span class="hljs-meta">#!/bin/bash</span>
+
+DOMAIN=<span class="hljs-string">&quot;yourdomain.com&quot;</span>
+GREEN=<span class="hljs-string">&#x27;\033[0;32m&#x27;</span>
+RED=<span class="hljs-string">&#x27;\033[0;31m&#x27;</span>
+BLUE=<span class="hljs-string">&#x27;\033[0;34m&#x27;</span>
+NC=<span class="hljs-string">&#x27;\033[0m&#x27;</span>
+
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${BLUE}</span>🔐 HTTPS 설정 확인 중...<span class="hljs-variable">${NC}</span>&quot;</span>
+<span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;==================================&quot;</span>
+
+<span class="hljs-comment"># 1. HTTP → HTTPS 리다이렉트 확인</span>
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;\n1. HTTP → HTTPS 리다이렉트 확인&quot;</span>
+HTTP_RESPONSE=$(curl -s -I http://<span class="hljs-variable">$DOMAIN</span> | <span class="hljs-built_in">head</span> -n 1)
+<span class="hljs-keyword">if</span> [[ <span class="hljs-variable">$HTTP_RESPONSE</span> == *<span class="hljs-string">&quot;301&quot;</span>* || <span class="hljs-variable">$HTTP_RESPONSE</span> == *<span class="hljs-string">&quot;302&quot;</span>* ]]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${GREEN}</span>✅ HTTP 리다이렉트 정상<span class="hljs-variable">${NC}</span>&quot;</span>
+    curl -s -I http://<span class="hljs-variable">$DOMAIN</span> | grep -i <span class="hljs-string">&quot;location:&quot;</span>
+<span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${RED}</span>❌ HTTP 리다이렉트 실패<span class="hljs-variable">${NC}</span>&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;응답: <span class="hljs-variable">$HTTP_RESPONSE</span>&quot;</span>
+<span class="hljs-keyword">fi</span>
+
+<span class="hljs-comment"># 2. HTTPS 연결 확인</span>
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;\n2. HTTPS 연결 확인&quot;</span>
+<span class="hljs-keyword">if</span> curl -s -I https://<span class="hljs-variable">$DOMAIN</span> &gt; /dev/null 2&gt;&amp;1; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${GREEN}</span>✅ HTTPS 연결 정상<span class="hljs-variable">${NC}</span>&quot;</span>
+    curl -s -I https://<span class="hljs-variable">$DOMAIN</span> | <span class="hljs-built_in">head</span> -n 1
+<span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${RED}</span>❌ HTTPS 연결 실패<span class="hljs-variable">${NC}</span>&quot;</span>
+<span class="hljs-keyword">fi</span>
+
+<span class="hljs-comment"># 3. SSL 인증서 확인</span>
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;\n3. SSL 인증서 확인&quot;</span>
+CERT_INFO=$(<span class="hljs-built_in">echo</span> | openssl s_client -connect <span class="hljs-variable">$DOMAIN</span>:443 -servername <span class="hljs-variable">$DOMAIN</span> 2&gt;/dev/null | openssl x509 -noout -subject -dates 2&gt;/dev/null)
+<span class="hljs-keyword">if</span> [ $? -eq 0 ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${GREEN}</span>✅ SSL 인증서 정상<span class="hljs-variable">${NC}</span>&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;<span class="hljs-variable">$CERT_INFO</span>&quot;</span>
+<span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${RED}</span>❌ SSL 인증서 확인 실패<span class="hljs-variable">${NC}</span>&quot;</span>
+<span class="hljs-keyword">fi</span>
+
+<span class="hljs-comment"># 4. ALB 리스너 확인</span>
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;\n4. ALB 리스너 확인&quot;</span>
+ALB_ARN=$(aws elbv2 describe-load-balancers --query <span class="hljs-string">&#x27;LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn&#x27;</span> --output text 2&gt;/dev/null)
+<span class="hljs-keyword">if</span> [ ! -z <span class="hljs-string">&quot;<span class="hljs-variable">$ALB_ARN</span>&quot;</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${GREEN}</span>✅ ALB 발견<span class="hljs-variable">${NC}</span>&quot;</span>
+    aws elbv2 describe-listeners --load-balancer-arn <span class="hljs-variable">$ALB_ARN</span> --query <span class="hljs-string">&#x27;Listeners[*].{Port:Port,Protocol:Protocol}&#x27;</span> --output table
+<span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${RED}</span>❌ ALB를 찾을 수 없음<span class="hljs-variable">${NC}</span>&quot;</span>
+<span class="hljs-keyword">fi</span>
+
+<span class="hljs-comment"># 5. 상세 SSL 테스트 링크</span>
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;\n5. 상세 SSL 테스트&quot;</span>
+<span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;🔗 https://www.ssllabs.com/ssltest/analyze.html?d=<span class="hljs-variable">$DOMAIN</span>&quot;</span>
+
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;\n<span class="hljs-variable">${GREEN}</span>✅ HTTPS 설정 확인 완료!<span class="hljs-variable">${NC}</span>&quot;</span>
+</code></pre>
+<h3 id="57-통합-배포-스크립트-업데이트">5.7 통합 배포 스크립트 업데이트</h3>
+<p><strong><a href="http://deploy-prod.sh">deploy-prod.sh</a> (HTTPS 확인 포함):</strong></p>
+<pre><code class="language-bash"><span class="hljs-meta">#!/bin/bash</span>
+<span class="hljs-built_in">set</span> -e
+
+<span class="hljs-comment"># 색상 정의</span>
+GREEN=<span class="hljs-string">&#x27;\033[0;32m&#x27;</span>
+BLUE=<span class="hljs-string">&#x27;\033[0;34m&#x27;</span>
+YELLOW=<span class="hljs-string">&#x27;\033[1;33m&#x27;</span>
+RED=<span class="hljs-string">&#x27;\033[0;31m&#x27;</span>
+NC=<span class="hljs-string">&#x27;\033[0m&#x27;</span>
+
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${RED}</span>🎉 Production 환경 배포 (rel 브랜치)<span class="hljs-variable">${NC}</span>&quot;</span>
+<span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;==================================&quot;</span>
+
+<span class="hljs-comment"># Git 브랜치 확인</span>
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+<span class="hljs-keyword">if</span> [ <span class="hljs-string">&quot;<span class="hljs-variable">$CURRENT_BRANCH</span>&quot;</span> != <span class="hljs-string">&quot;rel&quot;</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${RED}</span>❌ 현재 브랜치: $CURRENT_BRANCH<span class="hljs-variable">${NC}</span>&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;Production 배포는 rel 브랜치에서만 가능합니다.&quot;</span>
+    <span class="hljs-built_in">exit</span> 1
+<span class="hljs-keyword">fi</span>
+
+<span class="hljs-comment"># 메시지 설정</span>
+MESSAGE=<span class="hljs-variable">${1:-&quot;Production deployment $(date &#x27;+%Y-%m-%d %H:%M:%S&#x27;)&quot;}</span>
+
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${RED}</span>🚨 PRODUCTION 환경에 배포합니다! 🚨<span class="hljs-variable">${NC}</span>&quot;</span>
+<span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;메시지: <span class="hljs-variable">$MESSAGE</span>&quot;</span>
+<span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+<span class="hljs-built_in">read</span> -p <span class="hljs-string">&quot;정말로 프로덕션에 배포하시겠습니까? (y/N): &quot;</span> -n 1 -r
+<span class="hljs-built_in">echo</span>
+<span class="hljs-keyword">if</span> [[ ! <span class="hljs-variable">$REPLY</span> =~ ^[Yy]$ ]]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;배포가 취소되었습니다.&quot;</span>
+    <span class="hljs-built_in">exit</span> 0
+<span class="hljs-keyword">fi</span>
+
+<span class="hljs-comment"># 배포</span>
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${BLUE}</span>🚀 프로덕션 배포 시작...<span class="hljs-variable">${NC}</span>&quot;</span>
+eb deploy production --message <span class="hljs-string">&quot;<span class="hljs-variable">$MESSAGE</span>&quot;</span> --<span class="hljs-built_in">timeout</span> 20
+
+<span class="hljs-keyword">if</span> [ $? -eq 0 ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${GREEN}</span>🎉 Production 배포 완료!<span class="hljs-variable">${NC}</span>&quot;</span>
+
+    <span class="hljs-comment"># HTTPS 설정 확인 추가</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${BLUE}</span>🔐 HTTPS 설정 확인 중...<span class="hljs-variable">${NC}</span>&quot;</span>
+    <span class="hljs-keyword">if</span> [ -f <span class="hljs-string">&quot;./check-https.sh&quot;</span> ]; <span class="hljs-keyword">then</span>
+        <span class="hljs-built_in">chmod</span> +x ./check-https.sh
+        ./check-https.sh
+    <span class="hljs-keyword">else</span>
+        <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;check-https.sh 파일이 없어 HTTPS 확인을 건너뜁니다.&quot;</span>
+    <span class="hljs-keyword">fi</span>
+
+    eb health production
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;🌐 Production URLs:&quot;</span>
+    eb status production | grep CNAME
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;🔒 HTTPS URL: https://yourdomain.com&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${GREEN}</span>🎊 모든 팀원에게 배포 완료를 알려주세요! 🎊<span class="hljs-variable">${NC}</span>&quot;</span>
+<span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;❌ 배포 실패&quot;</span>
+    <span class="hljs-built_in">exit</span> 1
+<span class="hljs-keyword">fi</span>
+</code></pre>
+<hr>
+<h2 id="-6단계-브랜치-전략별-배포-스크립트-설정">📱 6단계: 브랜치 전략별 배포 스크립트 설정</h2>
+<h3 id="61-환경별-배포-스크립트">6.1 환경별 배포 스크립트</h3>
+<p><strong><a href="http://deploy-dev.sh">deploy-dev.sh</a> (Development 환경용):</strong></p>
+<pre><code class="language-bash"><span class="hljs-meta">#!/bin/bash</span>
+<span class="hljs-built_in">set</span> -e
+
+<span class="hljs-comment"># 색상 정의</span>
+GREEN=<span class="hljs-string">&#x27;\033[0;32m&#x27;</span>
+BLUE=<span class="hljs-string">&#x27;\033[0;34m&#x27;</span>
+YELLOW=<span class="hljs-string">&#x27;\033[1;33m&#x27;</span>
+NC=<span class="hljs-string">&#x27;\033[0m&#x27;</span>
+
+<span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${BLUE}</span>🚀 Development 환경 배포<span class="hljs-variable">${NC}</span>&quot;</span>
+<span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;==================================&quot;</span>
+
+<span class="hljs-comment"># Git 브랜치 확인</span>
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+<span class="hljs-keyword">if</span> [ <span class="hljs-string">&quot;<span class="hljs-variable">$CURRENT_BRANCH</span>&quot;</span> != <span class="hljs-string">&quot;dev&quot;</span> ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${YELLOW}</span>⚠️ 현재 브랜치: $CURRENT_BRANCH<span class="hljs-variable">${NC}</span>&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;Development 배포는 dev 브랜치에서 진행하는 것을 권장합니다.&quot;</span>
+    <span class="hljs-built_in">read</span> -p <span class="hljs-string">&quot;계속 진행하시겠습니까? (y/N): &quot;</span> -n 1 -r
+    <span class="hljs-built_in">echo</span>
+    <span class="hljs-keyword">if</span> [[ ! <span class="hljs-variable">$REPLY</span> =~ ^[Yy]$ ]]; <span class="hljs-keyword">then</span>
+        <span class="hljs-built_in">exit</span> 0
+    <span class="hljs-keyword">fi</span>
+<span class="hljs-keyword">fi</span>
+
+<span class="hljs-comment"># 메시지 설정</span>
+MESSAGE=<span class="hljs-variable">${1:-&quot;Dev deployment $(date &#x27;+%Y-%m-%d %H:%M:%S&#x27;)&quot;}</span>
+
+<span class="hljs-comment"># 배포</span>
+eb deploy development --message <span class="hljs-string">&quot;<span class="hljs-variable">$MESSAGE</span>&quot;</span> --<span class="hljs-built_in">timeout</span> 15
+
+<span class="hljs-keyword">if</span> [ $? -eq 0 ]; <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${GREEN}</span>✅ Development 배포 완료!<span class="hljs-variable">${NC}</span>&quot;</span>
+    eb health development
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;🌐 Development URL:&quot;</span>
+    eb status development | grep CNAME
+<span class="hljs-keyword">else</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;❌ 배포 실패&quot;</span>
+    <span class="hljs-built_in">exit</span> 1
+<span class="hljs-keyword">fi</span>
+</code></pre>
+<h3 id="62-makefile-브랜치별-배포-지원">6.2 Makefile (브랜치별 배포 지원)</h3>
+<pre><code class="language-makefile"><span class="hljs-comment"># Makefile (브랜치 전략 지원)</span>
+<span class="hljs-meta"><span class="hljs-keyword">.PHONY</span>: help deploy-dev deploy-prod status-all health-all logs-all</span>
+
+<span class="hljs-comment"># 색상 정의</span>
+BLUE = \033[0;34m
+GREEN = \033[0;32m
+YELLOW = \033[1;33m
+RED = \033[0;31m
+NC = \033[0m
+
+<span class="hljs-comment"># 현재 브랜치 확인</span>
+CURRENT_BRANCH := <span class="hljs-variable">$(<span class="hljs-built_in">shell</span> git rev-parse --abbrev-ref HEAD 2&gt;/dev/null || echo &quot;unknown&quot;)</span>
+
+<span class="hljs-comment"># 기본 명령어</span>
+<span class="hljs-section">all: help</span>
+
+<span class="hljs-section">help:</span>
+	@echo <span class="hljs-string">&quot;<span class="hljs-variable">$(BLUE)</span>🚀 브랜치 전략 기반 배포 명령어<span class="hljs-variable">$(NC)</span>&quot;</span>
+	@echo <span class="hljs-string">&quot;================================================&quot;</span>
+	@echo <span class="hljs-string">&quot;&quot;</span>
+	@echo <span class="hljs-string">&quot;현재 브랜치: <span class="hljs-variable">$(YELLOW)</span><span class="hljs-variable">$(CURRENT_BRANCH)</span><span class="hljs-variable">$(NC)</span>&quot;</span>
+	@echo <span class="hljs-string">&quot;&quot;</span>
+	@echo <span class="hljs-string">&quot;배포 명령어:&quot;</span>
+	@echo <span class="hljs-string">&quot;  <span class="hljs-variable">$(GREEN)</span>make deploy-dev<span class="hljs-variable">$(NC)</span>      - Development 환경 배포 (dev 브랜치)&quot;</span>
+	@echo <span class="hljs-string">&quot;  <span class="hljs-variable">$(GREEN)</span>make deploy-prod<span class="hljs-variable">$(NC)</span>     - Production 환경 배포 (rel 브랜치)&quot;</span>
+	@echo <span class="hljs-string">&quot;&quot;</span>
+	@echo <span class="hljs-string">&quot;HTTPS 확인:&quot;</span>
+	@echo <span class="hljs-string">&quot;  <span class="hljs-variable">$(GREEN)</span>make check-https<span class="hljs-variable">$(NC)</span>     - HTTPS 설정 확인&quot;</span>
+	@echo <span class="hljs-string">&quot;&quot;</span>
+	@echo <span class="hljs-string">&quot;모니터링 명령어:&quot;</span>
+	@echo <span class="hljs-string">&quot;  <span class="hljs-variable">$(GREEN)</span>make status-all<span class="hljs-variable">$(NC)</span>      - 모든 환경 상태 확인&quot;</span>
+	@echo <span class="hljs-string">&quot;  <span class="hljs-variable">$(GREEN)</span>make health-all<span class="hljs-variable">$(NC)</span>      - 모든 환경 헬스 체크&quot;</span>
+	@echo <span class="hljs-string">&quot;  <span class="hljs-variable">$(GREEN)</span>make logs-dev<span class="hljs-variable">$(NC)</span>        - Development 로그&quot;</span>
+	@echo <span class="hljs-string">&quot;  <span class="hljs-variable">$(GREEN)</span>make logs-prod<span class="hljs-variable">$(NC)</span>       - Production 로그&quot;</span>
+
+<span class="hljs-comment"># 배포 명령어</span>
+<span class="hljs-section">deploy-dev:</span>
+	@echo <span class="hljs-string">&quot;<span class="hljs-variable">$(BLUE)</span>🚀 Development 환경 배포<span class="hljs-variable">$(NC)</span>&quot;</span>
+	@./deploy-dev.sh <span class="hljs-string">&quot;<span class="hljs-variable">$(MSG)</span>&quot;</span>
+
+<span class="hljs-section">deploy-prod:</span>
+	@echo <span class="hljs-string">&quot;<span class="hljs-variable">$(RED)</span>🎉 Production 환경 배포<span class="hljs-variable">$(NC)</span>&quot;</span>
+	@./deploy-rel.sh <span class="hljs-string">&quot;<span class="hljs-variable">$(MSG)</span>&quot;</span>
+
+<span class="hljs-comment"># HTTPS 확인</span>
+<span class="hljs-section">check-https:</span>
+	@echo <span class="hljs-string">&quot;<span class="hljs-variable">$(BLUE)</span>🔐 HTTPS 설정 확인<span class="hljs-variable">$(NC)</span>&quot;</span>
+	@./check-https.sh
+
+<span class="hljs-comment"># 상태 확인</span>
+<span class="hljs-section">status-all:</span>
+	@echo <span class="hljs-string">&quot;<span class="hljs-variable">$(BLUE)</span>📊 모든 환경 상태 확인<span class="hljs-variable">$(NC)</span>&quot;</span>
+	@eb status development 2&gt;/dev/null || echo <span class="hljs-string">&quot;Development 환경 없음&quot;</span>
+	@eb status production 2&gt;/dev/null || echo <span class="hljs-string">&quot;Production 환경 없음&quot;</span>
+
+<span class="hljs-section">health-all:</span>
+	@echo <span class="hljs-string">&quot;<span class="hljs-variable">$(BLUE)</span>🏥 모든 환경 헬스 체크<span class="hljs-variable">$(NC)</span>&quot;</span>
+	@eb health development 2&gt;/dev/null || echo <span class="hljs-string">&quot;Development 환경 없음&quot;</span>
+	@eb health production 2&gt;/dev/null || echo <span class="hljs-string">&quot;Production 환경 없음&quot;</span>
+</code></pre>
+<h3 id="63-개발-워크플로우-스크립트">6.3 개발 워크플로우 스크립트</h3>
+<p><strong><a href="http://workflow.sh">workflow.sh</a> (전체 워크플로우 도움):</strong></p>
+<pre><code class="language-bash"><span class="hljs-meta">#!/bin/bash</span>
+
+<span class="hljs-comment"># 색상 정의</span>
+GREEN=<span class="hljs-string">&#x27;\033[0;32m&#x27;</span>
+BLUE=<span class="hljs-string">&#x27;\033[0;34m&#x27;</span>
+YELLOW=<span class="hljs-string">&#x27;\033[1;33m&#x27;</span>
+RED=<span class="hljs-string">&#x27;\033[0;31m&#x27;</span>
+NC=<span class="hljs-string">&#x27;\033[0m&#x27;</span>
+
+<span class="hljs-function"><span class="hljs-title">show_workflow_help</span></span>() {
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${BLUE}</span>🔄 개발 워크플로우 가이드<span class="hljs-variable">${NC}</span>&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;==================================&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;1️⃣  새 기능 개발:&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   git checkout dev&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   git pull origin dev&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   git checkout -b feature/new-feature&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   # 개발 작업...&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   git add . &amp;&amp; git commit -m &#x27;feat: 새 기능 추가&#x27;&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   git push origin feature/new-feature&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   # GitHub에서 feature/new-feature → dev PR 생성&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;2️⃣  개발 환경 테스트:&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   # PR 머지 후 자동으로 Development 환경에 배포됨&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   # 또는 수동 배포:&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   git checkout dev&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   make deploy-dev&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;3️⃣  프로덕션 배포:&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   # dev → rel PR 생성 및 머지&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   # PR 머지 후 자동으로 Production 환경에 배포됨&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   # 또는 수동 배포:&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   git checkout rel&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   make deploy-prod&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;4️⃣  HTTPS 확인:&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   make check-https&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+    <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${YELLOW}</span>💡 유용한 명령어:<span class="hljs-variable">${NC}</span>&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   make help              # 모든 명령어 보기&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   make status-all        # 모든 환경 상태 확인&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   make health-all        # 모든 환경 헬스 체크&quot;</span>
+    <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;   make check-https       # HTTPS 설정 확인&quot;</span>
+}
+
+<span class="hljs-keyword">case</span> <span class="hljs-string">&quot;<span class="hljs-variable">$1</span>&quot;</span> <span class="hljs-keyword">in</span>
+    <span class="hljs-string">&quot;help&quot;</span>|<span class="hljs-string">&quot;&quot;</span>|<span class="hljs-string">&quot;-h&quot;</span>|<span class="hljs-string">&quot;--help&quot;</span>)
+        show_workflow_help
+        ;;
+    <span class="hljs-string">&quot;feature&quot;</span>)
+        FEATURE_NAME=<span class="hljs-string">&quot;<span class="hljs-variable">$2</span>&quot;</span>
+        <span class="hljs-keyword">if</span> [ -z <span class="hljs-string">&quot;<span class="hljs-variable">$FEATURE_NAME</span>&quot;</span> ]; <span class="hljs-keyword">then</span>
+            <span class="hljs-built_in">read</span> -p <span class="hljs-string">&quot;기능 이름을 입력하세요: &quot;</span> FEATURE_NAME
+        <span class="hljs-keyword">fi</span>
+        <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${BLUE}</span>🚀 새 기능 브랜치 생성: feature/$FEATURE_NAME<span class="hljs-variable">${NC}</span>&quot;</span>
+        git checkout dev
+        git pull origin dev
+        git checkout -b <span class="hljs-string">&quot;feature/<span class="hljs-variable">$FEATURE_NAME</span>&quot;</span>
+        <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${GREEN}</span>✅ feature/<span class="hljs-variable">$FEATURE_NAME</span> 브랜치에서 개발을 시작하세요!<span class="hljs-variable">${NC}</span>&quot;</span>
+        ;;
+    <span class="hljs-string">&quot;deploy&quot;</span>)
+        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        <span class="hljs-keyword">case</span> <span class="hljs-string">&quot;<span class="hljs-variable">$CURRENT_BRANCH</span>&quot;</span> <span class="hljs-keyword">in</span>
+            <span class="hljs-string">&quot;dev&quot;</span>)
+                make deploy-dev
+                ;;
+            <span class="hljs-string">&quot;rel&quot;</span>)
+                make deploy-prod
+                ;;
+            *)
+                <span class="hljs-built_in">echo</span> -e <span class="hljs-string">&quot;<span class="hljs-variable">${RED}</span>❌ 현재 브랜치(<span class="hljs-variable">$CURRENT_BRANCH</span>)에서는 배포할 수 없습니다.<span class="hljs-variable">${NC}</span>&quot;</span>
+                <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;dev(Development), rel(Production) 브랜치에서만 배포 가능합니다.&quot;</span>
+                ;;
+        <span class="hljs-keyword">esac</span>
+        ;;
+    <span class="hljs-string">&quot;https&quot;</span>)
+        make check-https
+        ;;
+    *)
+        <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;사용법: <span class="hljs-variable">$0</span> {help|feature|deploy|https}&quot;</span>
+        <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;&quot;</span>
+        <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;  help     - 워크플로우 가이드 표시&quot;</span>
+        <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;  feature  - 새 기능 브랜치 생성&quot;</span>
+        <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;  deploy   - 현재 브랜치에 맞는 환경에 배포&quot;</span>
+        <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;  https    - HTTPS 설정 확인&quot;</span>
+        ;;
+<span class="hljs-keyword">esac</span>
+</code></pre>
+<hr>
+<h2 id="-7단계-테스트-및-검증">✅ 7단계: 테스트 및 검증</h2>
+<h3 id="71-로컬-테스트">7.1 로컬 테스트</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># Docker 빌드 테스트</span>
+docker build -t my-app .
+
+<span class="hljs-comment"># 로컬 실행 테스트</span>
+docker run -p 3000:8080 my-app
+
+<span class="hljs-comment"># 헬스체크 테스트</span>
+curl http://localhost:3000/health
+</code></pre>
+<h3 id="72-브랜치별-배포-테스트">7.2 브랜치별 배포 테스트</h3>
+<p><strong>Development 환경 테스트:</strong></p>
+<pre><code class="language-bash"><span class="hljs-comment"># dev 브랜치에서 배포</span>
+git checkout dev
+make deploy-dev
+
+<span class="hljs-comment"># 또는 스크립트로</span>
+./deploy-dev.sh <span class="hljs-string">&quot;개발 환경 테스트&quot;</span>
+
+<span class="hljs-comment"># 상태 확인</span>
+eb status development
+eb health development
+</code></pre>
+<p><strong>Production 환경 테스트:</strong></p>
+<pre><code class="language-bash"><span class="hljs-comment"># rel 브랜치에서 배포</span>
+git checkout rel
+make deploy-prod
+
+<span class="hljs-comment"># 상태 확인</span>
+eb status production
+eb health production
+
+<span class="hljs-comment"># HTTPS 확인</span>
+make check-https
+</code></pre>
+<h3 id="73-https-설정-검증">7.3 HTTPS 설정 검증</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 1. ALB 리스너 확인</span>
+aws elbv2 describe-listeners \
+    --load-balancer-arn $(aws elbv2 describe-load-balancers --query <span class="hljs-string">&#x27;LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn&#x27;</span> --output text)
+
+<span class="hljs-comment"># 2. HTTP → HTTPS 리다이렉트 테스트</span>
+curl -I http://yourdomain.com
+
+<span class="hljs-comment"># 3. HTTPS 접속 테스트</span>
+curl -I https://yourdomain.com
+
+<span class="hljs-comment"># 4. SSL 인증서 정보 확인</span>
+openssl s_client -connect yourdomain.com:443 -servername yourdomain.com
+
+<span class="hljs-comment"># 5. 통합 확인 스크립트</span>
+./check-https.sh
+</code></pre>
+<h3 id="74-github-actions-워크플로우-테스트">7.4 GitHub Actions 워크플로우 테스트</h3>
+<p><strong>Feature → Dev 워크플로우:</strong></p>
+<pre><code class="language-bash"><span class="hljs-comment"># 1. 새 기능 브랜치 생성</span>
+./workflow.sh feature new-login
+
+<span class="hljs-comment"># 2. 개발 작업 후 커밋</span>
+git add .
+git commit -m <span class="hljs-string">&quot;feat: 새로운 로그인 기능 추가&quot;</span>
+git push origin feature/new-login
+
+<span class="hljs-comment"># 3. GitHub에서 feature/new-login → dev PR 생성</span>
+<span class="hljs-comment"># 4. PR 머지 시 자동으로 Development 환경에 배포됨</span>
+</code></pre>
+<p><strong>Dev → Rel 워크플로우:</strong></p>
+<pre><code class="language-bash"><span class="hljs-comment"># 1. dev → rel PR 생성 (GitHub에서)</span>
+<span class="hljs-comment"># 2. PR 머지 시 자동으로 Production 환경에 배포됨</span>
+<span class="hljs-comment"># 3. 프로덕션 테스트 및 HTTPS 확인</span>
+make check-https
+</code></pre>
+<hr>
+<h2 id="-8단계-최종-설정-완료">🎯 8단계: 최종 설정 완료</h2>
+<h3 id="81-브랜치별-환경-매핑">8.1 브랜치별 환경 매핑</h3>
+<p><strong>환경 구성:</strong></p>
+<pre><code class="language-yaml"><span class="hljs-string">Branches</span> <span class="hljs-string">→</span> <span class="hljs-attr">Environments:</span>
+  <span class="hljs-string">feature/*</span> <span class="hljs-string">→</span> <span class="hljs-string">로컬</span> <span class="hljs-string">개발</span> <span class="hljs-string">(Docker)</span>
+  <span class="hljs-string">dev</span>       <span class="hljs-string">→</span> <span class="hljs-string">Development</span> <span class="hljs-string">(EB:</span> <span class="hljs-string">development</span> <span class="hljs-string">+</span> <span class="hljs-string">ALB)</span>
+  <span class="hljs-string">rel</span>       <span class="hljs-string">→</span> <span class="hljs-string">Production</span> <span class="hljs-string">(EB:</span> <span class="hljs-string">production</span> <span class="hljs-string">+</span> <span class="hljs-string">ALB</span> <span class="hljs-string">+</span> <span class="hljs-string">HTTPS)</span> <span class="hljs-string">←</span> <span class="hljs-string">최종</span> <span class="hljs-string">배포</span>
+  <span class="hljs-string">main</span>      <span class="hljs-string">→</span> <span class="hljs-string">Archive</span> <span class="hljs-string">(아카이브용)</span>
+
+<span class="hljs-attr">Deployment Triggers:</span>
+  <span class="hljs-string">PR</span> <span class="hljs-string">→</span> <span class="hljs-attr">dev:</span> <span class="hljs-string">Development</span> <span class="hljs-string">자동</span> <span class="hljs-string">배포</span>
+  <span class="hljs-string">PR</span> <span class="hljs-string">→</span> <span class="hljs-attr">rel:</span> <span class="hljs-string">Production</span> <span class="hljs-string">자동</span> <span class="hljs-string">배포</span> <span class="hljs-string">+</span> <span class="hljs-string">Release</span> <span class="hljs-string">생성</span> <span class="hljs-string">+</span> <span class="hljs-string">HTTPS</span> <span class="hljs-string">(최종)</span>
+  <span class="hljs-attr">main:</span> <span class="hljs-string">아카이브용</span> <span class="hljs-string">(수동</span> <span class="hljs-string">실행만)</span>
+
+<span class="hljs-string">HTTPS</span> <span class="hljs-string">지원:</span>
+  <span class="hljs-string">모든</span> <span class="hljs-string">환경에</span> <span class="hljs-string">Application</span> <span class="hljs-string">Load</span> <span class="hljs-string">Balancer</span> <span class="hljs-string">포함</span>
+  <span class="hljs-string">Production</span> <span class="hljs-string">환경에</span> <span class="hljs-string">HTTPS</span> <span class="hljs-string">완전</span> <span class="hljs-string">적용</span>
+  <span class="hljs-string">SSL</span> <span class="hljs-string">인증서</span> <span class="hljs-string">자동</span> <span class="hljs-string">갱신</span> <span class="hljs-string">(ACM)</span>
+</code></pre>
+<h3 id="82-환경별-설정-차이점">8.2 환경별 설정 차이점</h3>
+<p><strong>Development (.ebextensions/dev-specific.config):</strong></p>
+<pre><code class="language-yaml"><span class="hljs-attr">option_settings:</span>
+  <span class="hljs-attr">aws:autoscaling:launchconfiguration:</span>
+    <span class="hljs-attr">InstanceType:</span> <span class="hljs-string">t3.micro</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:environment:</span>
+    <span class="hljs-attr">EnvironmentType:</span> <span class="hljs-string">LoadBalanced</span>
+    <span class="hljs-attr">LoadBalancerType:</span> <span class="hljs-string">application</span>
+  <span class="hljs-attr">aws:autoscaling:asg:</span>
+    <span class="hljs-attr">MinSize:</span> <span class="hljs-number">1</span>
+    <span class="hljs-attr">MaxSize:</span> <span class="hljs-number">1</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:application:environment:</span>
+    <span class="hljs-attr">NODE_ENV:</span> <span class="hljs-string">development</span>
+    <span class="hljs-attr">LOG_LEVEL:</span> <span class="hljs-string">debug</span>
+</code></pre>
+<p><strong>Production (.ebextensions/prod-specific.config):</strong></p>
+<pre><code class="language-yaml"><span class="hljs-attr">option_settings:</span>
+  <span class="hljs-attr">aws:autoscaling:launchconfiguration:</span>
+    <span class="hljs-attr">InstanceType:</span> <span class="hljs-string">t3.medium</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:environment:</span>
+    <span class="hljs-attr">EnvironmentType:</span> <span class="hljs-string">LoadBalanced</span>
+    <span class="hljs-attr">LoadBalancerType:</span> <span class="hljs-string">application</span>
+  <span class="hljs-attr">aws:autoscaling:asg:</span>
+    <span class="hljs-attr">MinSize:</span> <span class="hljs-number">2</span>
+    <span class="hljs-attr">MaxSize:</span> <span class="hljs-number">5</span>
+  <span class="hljs-attr">aws:elasticbeanstalk:application:environment:</span>
+    <span class="hljs-attr">NODE_ENV:</span> <span class="hljs-string">production</span>
+    <span class="hljs-attr">LOG_LEVEL:</span> <span class="hljs-string">warn</span>
+  <span class="hljs-attr">aws:elbv2:listener:443:</span>
+    <span class="hljs-attr">ListenerEnabled:</span> <span class="hljs-string">&#x27;true&#x27;</span>
+    <span class="hljs-attr">Protocol:</span> <span class="hljs-string">HTTPS</span>
+    <span class="hljs-attr">SSLCertificateArns:</span> <span class="hljs-string">arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID</span>
+    <span class="hljs-attr">SSLPolicy:</span> <span class="hljs-string">ELBSecurityPolicy-TLS13-1-2-2021-06</span>
+</code></pre>
+<hr>
+<h2 id="-완료-체크리스트">📋 완료 체크리스트</h2>
+<h3 id="기본-설정">기본 설정</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> AWS 계정 및 IAM 사용자 생성</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>IAMFullAccess 정책 추가</strong> (중요!)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> AWS CLI 및 EB CLI 설치</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 필수 서비스 롤 생성 (선택사항)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> NestJS 프로젝트 생성</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Dockerfile 및 .dockerignore 작성</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> .ebextensions 폴더 설정 (ALB + 서비스 롤 포함)</li>
+</ul>
+<h3 id="브랜치-및-환경-설정">브랜치 및 환경 설정</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> dev, rel, main 브랜치 생성</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> GitHub 브랜치 보호 규칙 설정</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Development 환경 생성 (ALB 포함)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Production 환경 생성 (ALB 포함)</li>
+</ul>
+<h3 id="https-설정-aws-공식-문서-기반">HTTPS 설정 (AWS 공식 문서 기반)</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Route 53 도메인 확인</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> ACM SSL 인증서 요청</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> DNS 검증 레코드 추가</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 인증서 검증 완료 확인</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <code>.ebextensions/05-https-*.config</code> 파일 생성 (올바른 방법)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> HTTPS 리스너 설정 (443 포트)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> HTTP → HTTPS 리다이렉트 설정</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Route 53 A 레코드 (Alias) 생성</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 올바른 ALB Hosted Zone ID 사용</li>
+</ul>
+<h3 id="cicd-파이프라인">CI/CD 파이프라인</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> GitHub Secrets 설정</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> deploy-dev.yml 워크플로우 설정</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> deploy-rel.yml 워크플로우 설정 (Production 배포용)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> deploy-production.yml 워크플로우 설정 (아카이브용)</li>
+</ul>
+<h3 id="배포-스크립트-및-도구">배포 스크립트 및 도구</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <a href="http://deploy-dev.sh">deploy-dev.sh</a> 스크립트 생성</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <a href="http://deploy-rel.sh">deploy-rel.sh</a> 스크립트 생성 (HTTPS 확인 포함)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <a href="http://check-https.sh">check-https.sh</a> 스크립트 생성</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> Makefile 설정 (브랜치별 명령어)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <a href="http://workflow.sh">workflow.sh</a> 헬퍼 스크립트 생성</li>
+</ul>
+<h3 id="최종-확인">최종 확인</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 모든 환경 정상 배포 확인</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 헬스체크 응답 확인 (/health)</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> GitHub PR 워크플로우 테스트</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>HTTP → HTTPS 리다이렉트 동작 확인</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>HTTPS 접속 정상 확인</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> <strong>SSL 인증서 정보 확인</strong></li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> ALB 리스너 정상 동작 확인</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 브랜치별 자동 배포 확인</li>
+</ul>
+<hr>
+<h2 id="-트러블슈팅-https-관련-추가">🚨 트러블슈팅 (HTTPS 관련 추가)</h2>
+<h3 id="https-관련-문제">HTTPS 관련 문제</h3>
+<h4 id="1-https-리스너-생성-실패">1. HTTPS 리스너 생성 실패</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 오류: &quot;A listener with port 443 already exists&quot;</span>
+<span class="hljs-comment"># 해결: 콘솔에서 생성된 리스너와 충돌</span>
+
+<span class="hljs-comment"># 기존 리스너 확인</span>
+aws elbv2 describe-listeners \
+    --load-balancer-arn $(aws elbv2 describe-load-balancers --query <span class="hljs-string">&#x27;LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn&#x27;</span> --output text)
+
+<span class="hljs-comment"># 해결방법 1: option_settings만 사용 (리스너가 이미 있는 경우)</span>
+<span class="hljs-comment"># .ebextensions/05-https-existing.config</span>
+option_settings:
+  aws:elbv2:listener:443:
+    ListenerEnabled: <span class="hljs-string">&#x27;true&#x27;</span>
+    Protocol: HTTPS
+    SSLCertificateArns: arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID
+
+<span class="hljs-comment"># 해결방법 2: 기존 리스너 삭제 후 재생성</span>
+aws elbv2 delete-listener --listener-arn EXISTING-LISTENER-ARN
+</code></pre>
+<h4 id="2-ssl-인증서-오류">2. SSL 인증서 오류</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 오류: &quot;Certificate not found&quot; 또는 &quot;Invalid certificate ARN&quot;</span>
+
+<span class="hljs-comment"># 인증서 ARN 재확인</span>
+aws acm list-certificates --region ap-northeast-2 \
+    --query <span class="hljs-string">&#x27;CertificateSummaryList[*].{Domain:DomainName,Arn:CertificateArn,Status:Status}&#x27;</span>
+
+<span class="hljs-comment"># 인증서 상태 확인 (ISSUED 여야 함)</span>
+aws acm describe-certificate \
+    --certificate-arn arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID
+
+<span class="hljs-comment"># 다른 리전에 인증서가 있는지 확인</span>
+aws acm list-certificates --region us-east-1
+</code></pre>
+<h4 id="3-http-리다이렉트가-작동하지-않음">3. HTTP 리다이렉트가 작동하지 않음</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 원인: Classic Load Balancer 사용 중</span>
+<span class="hljs-comment"># 확인방법</span>
+aws elbv2 describe-load-balancers --query <span class="hljs-string">&#x27;LoadBalancers[?contains(LoadBalancerName, `awseb`)].Type&#x27;</span>
+
+<span class="hljs-comment"># 해결: Application Load Balancer로 환경 재생성</span>
+eb create production-new \
+    --elb-type application \
+    --instance_type t3.medium
+</code></pre>
+<h4 id="4-route-53-도메인-연결-실패">4. Route 53 도메인 연결 실패</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 오류: &quot;InvalidChangeBatch&quot; 또는 &quot;Alias target does not exist&quot;</span>
+
+<span class="hljs-comment"># ALB DNS 이름 정확히 확인</span>
+ALB_DNS=$(eb status production | grep CNAME | awk <span class="hljs-string">&#x27;{print $2}&#x27;</span>)
+<span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;ALB DNS: <span class="hljs-variable">$ALB_DNS</span>&quot;</span>
+
+<span class="hljs-comment"># 올바른 Hosted Zone ID 사용 (리전별)</span>
+<span class="hljs-comment"># 서울(ap-northeast-2): ZWKZPGTI48KDX</span>
+<span class="hljs-comment"># 확인 방법:</span>
+aws elbv2 describe-load-balancers \
+    --query <span class="hljs-string">&#x27;LoadBalancers[?contains(LoadBalancerName, `awseb`)].CanonicalHostedZoneId&#x27;</span>
+</code></pre>
+<h4 id="5-mixed-content-오류-https에서-http-리소스-로드">5. Mixed Content 오류 (HTTPS에서 HTTP 리소스 로드)</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 해결: 애플리케이션에서 HTTPS 감지 설정</span>
+<span class="hljs-comment"># src/main.ts에 추가</span>
+app.set(<span class="hljs-string">&#x27;trust proxy&#x27;</span>, 1); // ALB 뒤에서 실행되므로
+
+<span class="hljs-comment"># 또는 Express.js의 경우</span>
+app.use((req, res, next) =&gt; {
+  <span class="hljs-keyword">if</span> (req.header(<span class="hljs-string">&#x27;x-forwarded-proto&#x27;</span>) !== <span class="hljs-string">&#x27;https&#x27;</span>) {
+    res.redirect(`https://<span class="hljs-variable">${req.header(&#x27;host&#x27;)}</span><span class="hljs-variable">${req.url}</span>`);
+  } <span class="hljs-keyword">else</span> {
+    next();
+  }
+});
+</code></pre>
+<h3 id="alb-및-https-관련">ALB 및 HTTPS 관련</h3>
+<h4 id="1-alb-생성-확인">1. ALB 생성 확인</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># ALB 목록 확인</span>
+aws elbv2 describe-load-balancers \
+    --query <span class="hljs-string">&#x27;LoadBalancers[?contains(LoadBalancerName, `awseb`)].{Name:LoadBalancerName,DNS:DNSName,State:State,Type:Type}&#x27;</span>
+
+<span class="hljs-comment"># ALB 타겟 그룹 상태 확인</span>
+aws elbv2 describe-target-health \
+    --target-group-arn $(aws elbv2 describe-target-groups --query <span class="hljs-string">&#x27;TargetGroups[0].TargetGroupArn&#x27;</span> --output text)
+</code></pre>
+<h4 id="2-ssl-policy-업데이트">2. SSL Policy 업데이트</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 최신 SSL 정책으로 업데이트</span>
+<span class="hljs-comment"># .ebextensions/ssl-policy-update.config</span>
+option_settings:
+  aws:elbv2:listener:443:
+    SSLPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+
+<span class="hljs-comment"># 또는 CLI로 직접 업데이트</span>
+aws elbv2 modify-listener \
+    --listener-arn YOUR-LISTENER-ARN \
+    --ssl-policy ELBSecurityPolicy-TLS13-1-2-2021-06
+</code></pre>
+<h4 id="3-https-헬스체크-설정">3. HTTPS 헬스체크 설정</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># HTTPS 엔드포인트로 헬스체크 변경</span>
+<span class="hljs-comment"># .ebextensions/https-health.config</span>
+option_settings:
+  aws:elasticbeanstalk:environment:process:default:
+    Port: 8080
+    Protocol: HTTP
+    HealthCheckPath: /health
+    <span class="hljs-comment"># ALB는 백엔드와 HTTP로 통신하므로 Protocol은 HTTP 유지</span>
+</code></pre>
+<h3 id="브랜치-전략-관련">브랜치 전략 관련</h3>
+<h4 id="1-pr-자동-배포가-안되는-경우">1. PR 자동 배포가 안되는 경우</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># GitHub Actions 워크플로우 파일 확인</span>
+<span class="hljs-built_in">ls</span> -la .github/workflows/
+
+<span class="hljs-comment"># 워크플로우 실행 로그 확인 (GitHub Actions 탭에서)</span>
+<span class="hljs-comment"># 일반적인 원인:</span>
+<span class="hljs-comment"># - AWS 자격증명 오류</span>
+<span class="hljs-comment"># - 브랜치 보호 규칙 충돌</span>
+<span class="hljs-comment"># - EB 환경 이름 불일치</span>
+
+<span class="hljs-comment"># Secrets 재설정</span>
+<span class="hljs-comment"># GitHub Repository → Settings → Secrets and variables → Actions</span>
+</code></pre>
+<h4 id="2-잘못된-브랜치에서-배포-시도">2. 잘못된 브랜치에서 배포 시도</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 현재 브랜치 확인</span>
+git branch --show-current
+
+<span class="hljs-comment"># 올바른 브랜치로 전환</span>
+make switch-dev    <span class="hljs-comment"># dev 브랜치로</span>
+make switch-rel    <span class="hljs-comment"># rel 브랜치로</span>
+make switch-main   <span class="hljs-comment"># main 브랜치로</span>
+
+<span class="hljs-comment"># 브랜치 보호 설정으로 강제 차단</span>
+</code></pre>
+<h4 id="3-환경별-설정-차이로-인한-오류">3. 환경별 설정 차이로 인한 오류</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 환경별 환경변수 확인</span>
+eb <span class="hljs-built_in">printenv</span> development
+eb <span class="hljs-built_in">printenv</span> production
+
+<span class="hljs-comment"># 환경별 설정 파일 분리</span>
+<span class="hljs-comment"># .ebextensions/dev-specific.config (Development용)</span>
+<span class="hljs-comment"># .ebextensions/prod-specific.config (Production용)</span>
+</code></pre>
+<h3 id="성능-및-모니터링">성능 및 모니터링</h3>
+<h4 id="1-alb-접속-로그-활성화">1. ALB 접속 로그 활성화</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># .ebextensions/alb-logs.config</span>
+option_settings:
+  aws:elbv2:loadbalancer:
+    AccessLogsS3Enabled: <span class="hljs-literal">true</span>
+    AccessLogsS3Bucket: my-app-alb-logs
+    AccessLogsS3Prefix: production
+
+<span class="hljs-comment"># S3 버킷 생성</span>
+aws s3 mb s3://my-app-alb-logs
+</code></pre>
+<h4 id="2-cloudwatch-메트릭-설정">2. CloudWatch 메트릭 설정</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># ALB 메트릭 확인</span>
+aws cloudwatch get-metric-statistics \
+    --namespace AWS/ApplicationELB \
+    --metric-name RequestCount \
+    --dimensions Name=LoadBalancer,Value=app/awseb-AWSEB-XXX/XXX \
+    --start-time 2024-01-01T00:00:00Z \
+    --end-time 2024-01-01T23:59:59Z \
+    --period 3600 \
+    --statistics Sum
+</code></pre>
+<hr>
+<h2 id="-완료">🎉 완료!</h2>
+<p>이제 <strong>AWS 공식 문서 기반의 완전한 브랜치 전략 + NestJS + Docker + Elastic Beanstalk + ALB + HTTPS 지원 + CI/CD</strong> 환경이 구축되었습니다!</p>
+<h3 id="-일반적인-개발-워크플로우">🚀 일반적인 개발 워크플로우</h3>
+<p><strong>1. 새 기능 개발:</strong></p>
+<pre><code class="language-bash">./workflow.sh feature login-improvement
+<span class="hljs-comment"># 개발 작업...</span>
+git add . &amp;&amp; git commit -m <span class="hljs-string">&quot;feat: 로그인 개선&quot;</span>
+git push origin feature/login-improvement
+<span class="hljs-comment"># GitHub에서 feature → dev PR 생성</span>
+</code></pre>
+<p><strong>2. 개발 환경 테스트:</strong></p>
+<pre><code class="language-bash"><span class="hljs-comment"># PR 머지 시 자동 배포됨 (ALB 포함)</span>
+<span class="hljs-comment"># 또는 수동: make deploy-dev</span>
+</code></pre>
+<p><strong>3. 프로덕션 배포:</strong></p>
+<pre><code class="language-bash"><span class="hljs-comment"># dev → rel PR 생성 및 머지</span>
+<span class="hljs-comment"># PR 머지 시 자동 배포됨 + Release 생성 + HTTPS 활성화</span>
+<span class="hljs-comment"># 또는 수동: make deploy-prod</span>
+</code></pre>
+<p><strong>4. HTTPS 확인:</strong></p>
+<pre><code class="language-bash">make check-https
+./workflow.sh https
+</code></pre>
+<h3 id="-유용한-명령어들">📱 유용한 명령어들</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 전체 상황 파악</span>
+make <span class="hljs-built_in">help</span>
+make status-all
+make health-all
+
+<span class="hljs-comment"># HTTPS 관련</span>
+make check-https
+curl -I https://yourdomain.com
+
+<span class="hljs-comment"># 브랜치별 배포</span>
+make deploy-dev MSG=<span class="hljs-string">&quot;새 기능 테스트&quot;</span>
+make deploy-prod MSG=<span class="hljs-string">&quot;v1.2.0 릴리즈&quot;</span>
+
+<span class="hljs-comment"># 워크플로우 도움말</span>
+./workflow.sh <span class="hljs-built_in">help</span>
+
+<span class="hljs-comment"># ALB 및 HTTPS 상태 확인</span>
+aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --query <span class="hljs-string">&#x27;LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn&#x27;</span> --output text)
+</code></pre>
+<h3 id="-https-완전-활성화-확인">🔒 HTTPS 완전 활성화 확인</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 1. HTTP → HTTPS 리다이렉트 확인</span>
+curl -I http://yourdomain.com
+<span class="hljs-comment"># Expected: 301 Moved Permanently, Location: https://yourdomain.com</span>
+
+<span class="hljs-comment"># 2. HTTPS 접속 확인</span>
+curl -I https://yourdomain.com
+<span class="hljs-comment"># Expected: 200 OK</span>
+
+<span class="hljs-comment"># 3. SSL 등급 확인</span>
+<span class="hljs-comment"># https://www.ssllabs.com/ssltest/analyze.html?d=yourdomain.com</span>
+
+<span class="hljs-comment"># 4. 통합 확인</span>
+./check-https.sh
+</code></pre>
+<h3 id="-핵심-개선사항-aws-공식-문서-기반">🎯 핵심 개선사항 (AWS 공식 문서 기반)</h3>
+<p><strong>✅ 올바른 HTTPS 설정:</strong></p>
+<ul>
+<li>AWS 공식 권장 방법 사용</li>
+<li><code>option_settings</code>와 <code>Resources</code> 올바른 조합</li>
+<li>Classic LB 대신 ALB 전용 설정</li>
+<li>최신 TLS 1.3 보안 정책</li>
+</ul>
+<p><strong>✅ 완전한 브랜치 전략:</strong></p>
+<ul>
+<li>feature → dev → rel 플로우</li>
+<li>자동화된 배포 파이프라인</li>
+<li>환경별 설정 분리</li>
+<li>HTTPS 배포 후 자동 검증</li>
+</ul>
+<p><strong>✅ 엔터프라이즈급 설정:</strong></p>
+<ul>
+<li>고가용성 Production 환경</li>
+<li>포괄적인 모니터링</li>
+<li>보안 헤더 설정</li>
+<li>자동 SSL 인증서 갱신</li>
+</ul>
+<p>완벽한 엔터프라이즈급 개발 환경이 완성되었습니다! 🎊</p>
+<p><strong>주요 특징:</strong></p>
+<ul>
+<li>✅ AWS 공식 문서 기반 HTTPS 설정</li>
+<li>✅ 모든 환경에 ALB 포함</li>
+<li>✅ 자동 HTTP → HTTPS 리다이렉트</li>
+<li>✅ 브랜치 전략 기반 자동 배포</li>
+<li>✅ 고가용성 프로덕션 환경</li>
+<li>✅ 완전 자동화된 CI/CD 파이프라인</li>
+<li>✅ 포괄적인 모니터링 및 알람</li>
+</ul>
+
+            <script async src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+            
+        </body>
+        </html>
