@@ -717,65 +717,457 @@ eb create development-minimal \
 
 ---
 
-## 🔐 5단계: HTTPS 설정 (ALB 기본 포함됨)
+## 🔐 5단계: HTTPS 설정 (AWS 공식 문서 기반)
 
-### 5.1 환경별 로드밸런서 설정 (이미 생성 시 포함됨)
+### 5.1 Route 53 도메인 및 ACM 인증서 준비
 
-모든 환경에 이미 ALB가 포함되어 있으므로 별도 설정 불필요하며, 필요 시 환경별 세부 조정만 진행합니다.
-
-**Development 환경용 (.ebextensions/dev-load-balancer.config):**
-
-```yaml
-option_settings:
-  aws:elbv2:loadbalancer:
-    IdleTimeout: 60
-```
-
-**Production 환경용 (.ebextensions/prod-load-balancer.config):**
-
-```yaml
-option_settings:
-  aws:elbv2:loadbalancer:
-    IdleTimeout: 300
-  aws:elbv2:listener:default:
-    Protocol: HTTP
-    Port: 80
-```
-
-### 5.2 SSL 인증서 발급
+#### 5.1.1 도메인 확인
 
 ```bash
-# AWS Certificate Manager에서 인증서 요청
+# Route 53에서 구매한 도메인 확인
+aws route53 list-hosted-zones --query 'HostedZones[*].{Name:Name,Id:Id}'
+```
+
+#### 5.1.2 ACM 인증서 요청
+
+```bash
+# SSL 인증서 요청 (DNS 검증 방식)
 aws acm request-certificate \
     --domain-name yourdomain.com \
     --subject-alternative-names "*.yourdomain.com" \
     --validation-method DNS \
     --region ap-northeast-2
 
-# 인증서 ARN 확인
+# 요청된 인증서 목록 확인
 aws acm list-certificates --region ap-northeast-2
+
+# 특정 인증서의 DNS 검증 레코드 확인
+aws acm describe-certificate \
+    --certificate-arn arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID \
+    --region ap-northeast-2
 ```
 
-### 5.3 HTTPS 리스너 설정
+#### 5.1.3 Route 53에 DNS 검증 레코드 추가
 
-**.ebextensions/05-https.config:**
+```bash
+# ACM에서 제공한 CNAME 레코드를 Route 53에 추가
+aws route53 change-resource-record-sets \
+    --hosted-zone-id Z1D633PJN98FT9 \
+    --change-batch '{
+        "Changes": [{
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+                "Name": "_VALIDATION_RECORD_NAME.yourdomain.com",
+                "Type": "CNAME",
+                "TTL": 300,
+                "ResourceRecords": [{"Value": "VALIDATION_RECORD_VALUE.acm-validations.aws."}]
+            }
+        }]
+    }'
+
+# 인증서 검증 완료까지 대기 (보통 5-10분)
+aws acm wait certificate-validated \
+    --certificate-arn arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID \
+    --region ap-northeast-2
+```
+
+### 5.2 Elastic Beanstalk에서 HTTPS 설정 (AWS 공식 방법)
+
+#### 5.2.1 방법 1: 기본 HTTPS 리스너만 설정
+
+**.ebextensions/05-https-basic.config:**
 
 ```yaml
+####################################################################################################
+#### Basic HTTPS Configuration - AWS 공식 문서 기반
+#### Application Load Balancer에서만 동작 (Classic/Network Load Balancer 지원 안함)
+#### 콘솔에서 이미 443 리스너를 만들었다면 이 설정을 사용하지 마세요
+####################################################################################################
+
 option_settings:
   aws:elbv2:listener:443:
+    ListenerEnabled: 'true'
     Protocol: HTTPS
     SSLCertificateArns: arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID
+    SSLPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+```
 
-  aws:elbv2:listener:80:
-    Protocol: HTTP
-    Rules: |
-      [
-        {
-          "Priority": 1,
-          "Conditions": [{"Field": "host-header", "Values": ["yourdomain.com"]}],
-          "Actions": [{"Type": "redirect", "RedirectConfig": {"Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}]
-        }
-      ]
+#### 5.2.2 방법 2: HTTPS + HTTP 리다이렉트 (완전한 설정)
+
+**.ebextensions/05-https-full.config:**
+
+```yaml
+####################################################################################################
+#### Complete HTTPS Configuration with HTTP Redirect - AWS 공식 문서 기반
+#### Application Load Balancer에서만 동작 (Classic/Network Load Balancer 지원 안함)
+#### 콘솔에서 이미 443 리스너를 만들었다면 이 설정을 사용하지 마세요
+####################################################################################################
+
+option_settings:
+  # HTTPS 리스너 설정 (443 포트)
+  aws:elbv2:listener:443:
+    ListenerEnabled: 'true'
+    Protocol: HTTPS
+    SSLCertificateArns: arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID
+    SSLPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+
+Resources:
+  # HTTP(80) → HTTPS(443) 리다이렉트 설정
+  AWSEBV2LoadBalancerListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            Host: '#{host}'
+            Path: '/#{path}'
+            Query: '#{query}'
+            StatusCode: HTTP_301
+      LoadBalancerArn:
+        Ref: AWSEBV2LoadBalancer
+      Port: 80
+      Protocol: HTTP
+```
+
+#### 5.2.3 방법 3: 별도 파일로 분리 (단계별 적용)
+
+**Step 1: .ebextensions/05-https-listener.config**
+
+```yaml
+####################################################################################################
+#### HTTPS Listener Only - 단계별 적용용
+#### 먼저 HTTPS 리스너만 설정하고 동작 확인 후 리다이렉트 추가
+####################################################################################################
+
+option_settings:
+  aws:elbv2:listener:443:
+    ListenerEnabled: 'true'
+    Protocol: HTTPS
+    SSLCertificateArns: arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID
+    SSLPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+```
+
+**Step 2: .ebextensions/06-https-redirect.config**
+
+```yaml
+####################################################################################################
+#### HTTP to HTTPS Redirect Only - AWS 공식 예제 기반
+#### 443 리스너가 이미 존재해야 함 (위의 설정 또는 콘솔에서 생성)
+####################################################################################################
+
+Resources:
+  AWSEBV2LoadBalancerListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            Host: '#{host}'
+            Path: '/#{path}'
+            Query: '#{query}'
+            StatusCode: HTTP_301
+      LoadBalancerArn:
+        Ref: AWSEBV2LoadBalancer
+      Port: 80
+      Protocol: HTTP
+```
+
+### 5.3 Route 53에서 도메인 연결
+
+#### 5.3.1 Elastic Beanstalk ALB DNS 이름 확인
+
+```bash
+# EB 환경의 ALB DNS 이름 확인
+eb status production | grep CNAME
+
+# 또는 AWS CLI로 확인
+aws elasticbeanstalk describe-environments \
+    --environment-names production \
+    --query 'Environments[0].CNAME'
+```
+
+#### 5.3.2 Route 53 A 레코드 생성 (Alias)
+
+**⚠️ 중요: 리전별 ALB Hosted Zone ID**
+
+```bash
+# 리전별 ALB Hosted Zone ID (정확한 값 필수!)
+# 서울 (ap-northeast-2): ZWKZPGTI48KDX
+# 버지니아 (us-east-1): Z35SXDOTRQ7X7K
+# 오하이오 (us-east-2): Z3AADJGX6KTTL2
+# 아일랜드 (eu-west-1): Z32O12XQLNTSW2
+```
+
+```bash
+# Route 53에 A 레코드 (Alias) 생성
+aws route53 change-resource-record-sets \
+    --hosted-zone-id Z1D633PJN98FT9 \
+    --change-batch '{
+        "Changes": [
+            {
+                "Action": "CREATE",
+                "ResourceRecordSet": {
+                    "Name": "yourdomain.com",
+                    "Type": "A",
+                    "AliasTarget": {
+                        "DNSName": "awseb-AWSEB-XXXXXXXXXXXXXXXX-XXXXXXXXX.ap-northeast-2.elb.amazonaws.com",
+                        "EvaluateTargetHealth": true,
+                        "HostedZoneId": "ZWKZPGTI48KDX"
+                    }
+                }
+            },
+            {
+                "Action": "CREATE",
+                "ResourceRecordSet": {
+                    "Name": "www.yourdomain.com",
+                    "Type": "A",
+                    "AliasTarget": {
+                        "DNSName": "awseb-AWSEB-XXXXXXXXXXXXXXXX-XXXXXXXXX.ap-northeast-2.elb.amazonaws.com",
+                        "EvaluateTargetHealth": true,
+                        "HostedZoneId": "ZWKZPGTI48KDX"
+                    }
+                }
+            }
+        ]
+    }'
+```
+
+### 5.4 배포 및 확인
+
+#### 5.4.1 설정 배포
+
+```bash
+# HTTPS 설정 배포
+eb deploy production --timeout 20
+
+# 배포 상태 확인
+eb status production
+eb health production
+```
+
+#### 5.4.2 HTTPS 동작 확인
+
+```bash
+# HTTP 접속 시 HTTPS로 리다이렉트 확인
+curl -I http://yourdomain.com
+
+# HTTPS 접속 확인
+curl -I https://yourdomain.com
+
+# SSL 인증서 정보 확인
+openssl s_client -connect yourdomain.com:443 -servername yourdomain.com
+
+# 보안 헤더 확인 (추가 설정한 경우)
+curl -I https://yourdomain.com | grep -E "(Strict-Transport|X-Frame|X-Content)"
+```
+
+#### 5.4.3 ALB 리스너 확인
+
+```bash
+# ALB 리스너 목록 확인
+aws elbv2 describe-listeners \
+    --load-balancer-arn $(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn' --output text)
+
+# HTTP 리다이렉트 규칙 확인
+aws elbv2 describe-rules \
+    --listener-arn $(aws elbv2 describe-listeners --load-balancer-arn YOUR-ALB-ARN --query 'Listeners[?Port==`80`].ListenerArn' --output text)
+```
+
+### 5.5 고급 HTTPS 설정 (선택사항)
+
+#### 5.5.1 보안 헤더 추가
+
+**.ebextensions/07-security-headers.config:**
+
+```yaml
+####################################################################################################
+#### Security Headers Configuration
+#### HSTS, CSP 등 보안 헤더 추가 (Nginx 기반 플랫폼용)
+####################################################################################################
+
+files:
+  '/etc/nginx/conf.d/security-headers.conf':
+    mode: '000644'
+    owner: root
+    group: root
+    content: |
+      # Security Headers
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+      add_header X-Frame-Options DENY always;
+      add_header X-Content-Type-Options nosniff always;
+      add_header Referrer-Policy strict-origin-when-cross-origin always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';" always;
+
+container_commands:
+  01_reload_nginx:
+    command: 'service nginx reload'
+    leader_only: true
+```
+
+#### 5.5.2 다중 도메인 지원
+
+**.ebextensions/08-multi-domain.config:**
+
+```yaml
+####################################################################################################
+#### Multi-Domain Support
+#### 여러 도메인에서 동일한 애플리케이션 접근 허용
+####################################################################################################
+
+Resources:
+  AWSEBV2LoadBalancerListenerRuleAdditional:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: AWSEBV2LoadBalancerTargetGroup
+      Conditions:
+        - Field: host-header
+          Values:
+            - api.yourdomain.com
+            - admin.yourdomain.com
+            - staging.yourdomain.com
+      ListenerArn:
+        Ref: AWSEBV2LoadBalancerListener443
+      Priority: 10
+```
+
+### 5.6 HTTPS 설정 확인 스크립트
+
+**check-https.sh:**
+
+```bash
+#!/bin/bash
+
+DOMAIN="yourdomain.com"
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo -e "${BLUE}🔐 HTTPS 설정 확인 중...${NC}"
+echo "=================================="
+
+# 1. HTTP → HTTPS 리다이렉트 확인
+echo -e "\n1. HTTP → HTTPS 리다이렉트 확인"
+HTTP_RESPONSE=$(curl -s -I http://$DOMAIN | head -n 1)
+if [[ $HTTP_RESPONSE == *"301"* || $HTTP_RESPONSE == *"302"* ]]; then
+    echo -e "${GREEN}✅ HTTP 리다이렉트 정상${NC}"
+    curl -s -I http://$DOMAIN | grep -i "location:"
+else
+    echo -e "${RED}❌ HTTP 리다이렉트 실패${NC}"
+    echo "응답: $HTTP_RESPONSE"
+fi
+
+# 2. HTTPS 연결 확인
+echo -e "\n2. HTTPS 연결 확인"
+if curl -s -I https://$DOMAIN > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ HTTPS 연결 정상${NC}"
+    curl -s -I https://$DOMAIN | head -n 1
+else
+    echo -e "${RED}❌ HTTPS 연결 실패${NC}"
+fi
+
+# 3. SSL 인증서 확인
+echo -e "\n3. SSL 인증서 확인"
+CERT_INFO=$(echo | openssl s_client -connect $DOMAIN:443 -servername $DOMAIN 2>/dev/null | openssl x509 -noout -subject -dates 2>/dev/null)
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ SSL 인증서 정상${NC}"
+    echo "$CERT_INFO"
+else
+    echo -e "${RED}❌ SSL 인증서 확인 실패${NC}"
+fi
+
+# 4. ALB 리스너 확인
+echo -e "\n4. ALB 리스너 확인"
+ALB_ARN=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn' --output text 2>/dev/null)
+if [ ! -z "$ALB_ARN" ]; then
+    echo -e "${GREEN}✅ ALB 발견${NC}"
+    aws elbv2 describe-listeners --load-balancer-arn $ALB_ARN --query 'Listeners[*].{Port:Port,Protocol:Protocol}' --output table
+else
+    echo -e "${RED}❌ ALB를 찾을 수 없음${NC}"
+fi
+
+# 5. 상세 SSL 테스트 링크
+echo -e "\n5. 상세 SSL 테스트"
+echo "🔗 https://www.ssllabs.com/ssltest/analyze.html?d=$DOMAIN"
+
+echo -e "\n${GREEN}✅ HTTPS 설정 확인 완료!${NC}"
+```
+
+### 5.7 통합 배포 스크립트 업데이트
+
+**deploy-prod.sh (HTTPS 확인 포함):**
+
+```bash
+#!/bin/bash
+set -e
+
+# 색상 정의
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${RED}🎉 Production 환경 배포 (rel 브랜치)${NC}"
+echo "=================================="
+
+# Git 브랜치 확인
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "rel" ]; then
+    echo -e "${RED}❌ 현재 브랜치: $CURRENT_BRANCH${NC}"
+    echo "Production 배포는 rel 브랜치에서만 가능합니다."
+    exit 1
+fi
+
+# 메시지 설정
+MESSAGE=${1:-"Production deployment $(date '+%Y-%m-%d %H:%M:%S')"}
+
+echo -e "${RED}🚨 PRODUCTION 환경에 배포합니다! 🚨${NC}"
+echo "메시지: $MESSAGE"
+echo ""
+read -p "정말로 프로덕션에 배포하시겠습니까? (y/N): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "배포가 취소되었습니다."
+    exit 0
+fi
+
+# 배포
+echo -e "${BLUE}🚀 프로덕션 배포 시작...${NC}"
+eb deploy production --message "$MESSAGE" --timeout 20
+
+if [ $? -eq 0 ]; then
+    echo ""
+    echo -e "${GREEN}🎉 Production 배포 완료!${NC}"
+
+    # HTTPS 설정 확인 추가
+    echo -e "${BLUE}🔐 HTTPS 설정 확인 중...${NC}"
+    if [ -f "./check-https.sh" ]; then
+        chmod +x ./check-https.sh
+        ./check-https.sh
+    else
+        echo "check-https.sh 파일이 없어 HTTPS 확인을 건너뜁니다."
+    fi
+
+    eb health production
+    echo ""
+    echo "🌐 Production URLs:"
+    eb status production | grep CNAME
+    echo "🔒 HTTPS URL: https://yourdomain.com"
+    echo ""
+    echo -e "${GREEN}🎊 모든 팀원에게 배포 완료를 알려주세요! 🎊${NC}"
+else
+    echo "❌ 배포 실패"
+    exit 1
+fi
 ```
 
 ---
@@ -829,88 +1221,6 @@ else
 fi
 ```
 
-**deploy-rel.sh (Production 환경용 - 최종 배포):**
-
-```bash
-#!/bin/bash
-set -e
-
-# 색상 정의
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-echo -e "${RED}🎉 Production 환경 배포 (rel 브랜치)${NC}"
-echo "=================================="
-
-# Git 브랜치 확인
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "rel" ]; then
-    echo -e "${RED}❌ 현재 브랜치: $CURRENT_BRANCH${NC}"
-    echo "Production 배포는 rel 브랜치에서만 가능합니다."
-    exit 1
-fi
-
-# dev 브랜치와 동기화 확인
-echo "📋 dev 브랜치와의 동기화 확인..."
-git fetch origin dev
-BEHIND=$(git rev-list --count HEAD..origin/dev)
-if [ $BEHIND -gt 0 ]; then
-    echo -e "${YELLOW}⚠️ rel 브랜치가 dev 브랜치보다 $BEHIND 커밋 뒤에 있습니다.${NC}"
-    echo "dev 브랜치를 rel에 머지해주세요."
-    exit 1
-fi
-
-# 메시지 설정
-MESSAGE=${1:-"Production deployment $(date '+%Y-%m-%d %H:%M:%S')"}
-
-echo -e "${RED}🚨 PRODUCTION 환경에 배포합니다! 🚨${NC}"
-echo "메시지: $MESSAGE"
-echo ""
-echo "⚠️  프로덕션 배포는 매우 신중하게 진행해야 합니다!"
-echo "⚠️  QA 테스트가 완료되었는지 확인해주세요!"
-echo ""
-read -p "정말로 프로덕션에 배포하시겠습니까? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "배포가 취소되었습니다."
-    exit 0
-fi
-
-echo "마지막 확인입니다..."
-read -p "프로덕션 배포를 최종 확인합니다. (YES 입력): " confirmation
-if [ "$confirmation" != "YES" ]; then
-    echo "배포가 취소되었습니다."
-    exit 0
-fi
-
-# 배포
-echo -e "${BLUE}🚀 프로덕션 배포 시작...${NC}"
-eb deploy production --message "$MESSAGE" --timeout 20
-
-if [ $? -eq 0 ]; then
-    echo ""
-    echo -e "${GREEN}🎉 Production 배포 완료!${NC}"
-    eb health production
-    echo ""
-    echo "🌐 Production URL:"
-    eb status production | grep CNAME
-    echo ""
-    echo -e "${GREEN}🎊 모든 팀원에게 배포 완료를 알려주세요! 🎊${NC}"
-
-    # Git 태그 생성
-    TAG="v$(date '+%Y%m%d-%H%M%S')"
-    git tag -a "$TAG" -m "Production release: $MESSAGE"
-    git push origin "$TAG"
-    echo "🏷️  Git 태그 생성: $TAG"
-else
-    echo "❌ 배포 실패"
-    exit 1
-fi
-```
-
 ### 6.2 Makefile (브랜치별 배포 지원)
 
 ```makefile
@@ -940,20 +1250,14 @@ help:
 	@echo "  $(GREEN)make deploy-dev$(NC)      - Development 환경 배포 (dev 브랜치)"
 	@echo "  $(GREEN)make deploy-prod$(NC)     - Production 환경 배포 (rel 브랜치)"
 	@echo ""
+	@echo "HTTPS 확인:"
+	@echo "  $(GREEN)make check-https$(NC)     - HTTPS 설정 확인"
+	@echo ""
 	@echo "모니터링 명령어:"
 	@echo "  $(GREEN)make status-all$(NC)      - 모든 환경 상태 확인"
 	@echo "  $(GREEN)make health-all$(NC)      - 모든 환경 헬스 체크"
 	@echo "  $(GREEN)make logs-dev$(NC)        - Development 로그"
 	@echo "  $(GREEN)make logs-prod$(NC)       - Production 로그"
-	@echo ""
-	@echo "개별 환경 명령어:"
-	@echo "  $(GREEN)make dev-status$(NC)      - Development 상태"
-	@echo "  $(GREEN)make prod-status$(NC)     - Production 상태"
-	@echo ""
-	@echo "브랜치 관리:"
-	@echo "  $(GREEN)make switch-dev$(NC)      - dev 브랜치로 전환"
-	@echo "  $(GREEN)make switch-rel$(NC)      - rel 브랜치로 전환 (Production)"
-	@echo "  $(GREEN)make switch-main$(NC)     - main 브랜치로 전환 (아카이브)"
 
 # 배포 명령어
 deploy-dev:
@@ -964,67 +1268,21 @@ deploy-prod:
 	@echo "$(RED)🎉 Production 환경 배포$(NC)"
 	@./deploy-rel.sh "$(MSG)"
 
+# HTTPS 확인
+check-https:
+	@echo "$(BLUE)🔐 HTTPS 설정 확인$(NC)"
+	@./check-https.sh
+
 # 상태 확인
-dev-status:
-	@echo "$(BLUE)📊 Development 상태$(NC)"
-	@eb status development
+status-all:
+	@echo "$(BLUE)📊 모든 환경 상태 확인$(NC)"
+	@eb status development 2>/dev/null || echo "Development 환경 없음"
+	@eb status production 2>/dev/null || echo "Production 환경 없음"
 
-prod-status:
-	@echo "$(BLUE)📊 Production 상태$(NC)"
-	@eb status production
-
-status-all: dev-status prod-status
-
-# 헬스 체크
-dev-health:
-	@echo "$(BLUE)🏥 Development 헬스$(NC)"
-	@eb health development
-
-prod-health:
-	@echo "$(BLUE)🏥 Production 헬스$(NC)"
-	@eb health production
-
-health-all: dev-health prod-health
-
-# 로그 확인
-logs-dev:
-	@eb logs development
-
-logs-prod:
-	@eb logs production
-
-# 브랜치 전환
-switch-dev:
-	@git checkout dev
-	@git pull origin dev
-
-switch-rel:
-	@git checkout rel
-	@git pull origin rel
-
-switch-main:
-	@git checkout main
-	@git pull origin main
-
-# 브랜치 동기화
-sync-dev-to-rel:
-	@echo "$(YELLOW)🔄 dev → rel 동기화 (Production 배포 준비)$(NC)"
-	@git checkout rel
-	@git pull origin rel
-	@git merge origin/dev
-	@git push origin rel
-
-# 환경 정보
-info:
-	@echo "$(BLUE)📄 환경 정보$(NC)"
-	@echo "=================================="
-	@echo "현재 브랜치: $(CURRENT_BRANCH)"
-	@echo "마지막 커밋: $(shell git log -1 --oneline 2>/dev/null || echo '알 수 없음')"
-	@echo ""
-	@echo "EB 환경:"
-	@echo "  Development: development (dev 브랜치)"
-	@echo "  Production: production (rel 브랜치)"
-	@echo "  Archive: main (아카이브용)"
+health-all:
+	@echo "$(BLUE)🏥 모든 환경 헬스 체크$(NC)"
+	@eb health development 2>/dev/null || echo "Development 환경 없음"
+	@eb health production 2>/dev/null || echo "Production 환경 없음"
 ```
 
 ### 6.3 개발 워크플로우 스크립트
@@ -1067,15 +1325,14 @@ show_workflow_help() {
     echo "   git checkout rel"
     echo "   make deploy-prod"
     echo ""
-    echo "4️⃣  아카이브 (필요시):"
-    echo "   # 주요 릴리즈를 main 브랜치에 아카이브"
-    echo "   # GitHub Actions에서 수동 실행"
+    echo "4️⃣  HTTPS 확인:"
+    echo "   make check-https"
     echo ""
     echo -e "${YELLOW}💡 유용한 명령어:${NC}"
     echo "   make help              # 모든 명령어 보기"
     echo "   make status-all        # 모든 환경 상태 확인"
     echo "   make health-all        # 모든 환경 헬스 체크"
-    echo "   make info              # 현재 상태 정보"
+    echo "   make check-https       # HTTPS 설정 확인"
 }
 
 case "$1" in
@@ -1108,12 +1365,16 @@ case "$1" in
                 ;;
         esac
         ;;
+    "https")
+        make check-https
+        ;;
     *)
-        echo "사용법: $0 {help|feature|deploy}"
+        echo "사용법: $0 {help|feature|deploy|https}"
         echo ""
         echo "  help     - 워크플로우 가이드 표시"
         echo "  feature  - 새 기능 브랜치 생성"
         echo "  deploy   - 현재 브랜치에 맞는 환경에 배포"
+        echo "  https    - HTTPS 설정 확인"
         ;;
 esac
 ```
@@ -1152,31 +1413,42 @@ eb status development
 eb health development
 ```
 
-**Staging 환경 테스트:**
+**Production 환경 테스트:**
 
 ```bash
 # rel 브랜치에서 배포
 git checkout rel
-make deploy-rel
-
-# 상태 확인
-eb status staging
-eb health staging
-```
-
-**Production 환경 테스트:**
-
-```bash
-# main 브랜치에서 배포 (신중하게!)
-git checkout main
 make deploy-prod
 
 # 상태 확인
 eb status production
 eb health production
+
+# HTTPS 확인
+make check-https
 ```
 
-### 7.3 GitHub Actions 워크플로우 테스트
+### 7.3 HTTPS 설정 검증
+
+```bash
+# 1. ALB 리스너 확인
+aws elbv2 describe-listeners \
+    --load-balancer-arn $(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn' --output text)
+
+# 2. HTTP → HTTPS 리다이렉트 테스트
+curl -I http://yourdomain.com
+
+# 3. HTTPS 접속 테스트
+curl -I https://yourdomain.com
+
+# 4. SSL 인증서 정보 확인
+openssl s_client -connect yourdomain.com:443 -servername yourdomain.com
+
+# 5. 통합 확인 스크립트
+./check-https.sh
+```
+
+### 7.4 GitHub Actions 워크플로우 테스트
 
 **Feature → Dev 워크플로우:**
 
@@ -1198,26 +1470,8 @@ git push origin feature/new-login
 ```bash
 # 1. dev → rel PR 생성 (GitHub에서)
 # 2. PR 머지 시 자동으로 Production 환경에 배포됨
-# 3. 프로덕션 테스트 및 모니터링
-```
-
-### 7.4 전체 환경 모니터링
-
-```bash
-# 모든 환경 상태 확인
-make status-all
-
-# 모든 환경 헬스 체크
-make health-all
-
-# 환경별 URL 확인
-echo "Development: $(eb status development | grep CNAME | awk '{print $2}')"
-echo "Staging: $(eb status staging | grep CNAME | awk '{print $2}')"
-echo "Production: $(eb status production | grep CNAME | awk '{print $2}')"
-
-# ALB 생성 확인
-aws elbv2 describe-load-balancers \
-    --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].{Name:LoadBalancerName,DNS:DNSName,Scheme:Scheme}'
+# 3. 프로덕션 테스트 및 HTTPS 확인
+make check-https
 ```
 
 ---
@@ -1232,17 +1486,18 @@ aws elbv2 describe-load-balancers \
 Branches → Environments:
   feature/* → 로컬 개발 (Docker)
   dev       → Development (EB: development + ALB)
-  rel       → Production (EB: production + ALB) ← 최종 배포
+  rel       → Production (EB: production + ALB + HTTPS) ← 최종 배포
   main      → Archive (아카이브용)
 
 Deployment Triggers:
   PR → dev: Development 자동 배포
-  PR → rel: Production 자동 배포 + Release 생성 (최종)
+  PR → rel: Production 자동 배포 + Release 생성 + HTTPS (최종)
   main: 아카이브용 (수동 실행만)
 
 HTTPS 지원:
   모든 환경에 Application Load Balancer 포함
-  SSL 인증서 발급 후 바로 HTTPS 적용 가능
+  Production 환경에 HTTPS 완전 적용
+  SSL 인증서 자동 갱신 (ACM)
 ```
 
 ### 8.2 환경별 설정 차이점
@@ -1264,13 +1519,6 @@ option_settings:
     LOG_LEVEL: debug
 ```
 
-**Staging (.ebextensions/staging-specific.config):**
-
-```yaml
-# rel 브랜치는 이제 Production 환경이므로 staging 설정 제거
-# 필요시 별도 스테이징 환경 생성 가능
-```
-
 **Production (.ebextensions/prod-specific.config):**
 
 ```yaml
@@ -1286,143 +1534,18 @@ option_settings:
   aws:elasticbeanstalk:application:environment:
     NODE_ENV: production
     LOG_LEVEL: warn
-```
-
-### 8.3 팀 개발 가이드라인
-
-**브랜치 네이밍 규칙:**
-
-```
-feature/JIRA-123-login-improvement
-feature/user-dashboard
-hotfix/critical-security-fix
-release/v1.2.0
-```
-
-**커밋 메시지 규칙:**
-
-```
-feat: 새로운 기능 추가
-fix: 버그 수정
-docs: 문서 수정
-style: 코드 포맷팅
-refactor: 코드 리팩토링
-test: 테스트 코드 추가
-chore: 빌드 과정 또는 보조 기능 수정
-```
-
-**PR 템플릿 (.github/pull_request_template.md):**
-
-```markdown
-## 변경 내용
-
-- [ ] 새로운 기능
-- [ ] 버그 수정
-- [ ] 성능 개선
-- [ ] 문서 업데이트
-
-## 설명
-
-<!-- 변경 내용에 대한 간단한 설명 -->
-
-## 테스트
-
-- [ ] 로컬 테스트 완료
-- [ ] Unit 테스트 추가/수정
-- [ ] Integration 테스트 확인
-
-## 체크리스트
-
-- [ ] 코드 리뷰 요청
-- [ ] 관련 이슈 연결
-- [ ] 문서 업데이트 (필요시)
-
-## 배포 후 확인사항
-
-- [ ] 헬스체크 정상
-- [ ] 주요 기능 동작 확인
-- [ ] 로그 에러 없음
-- [ ] HTTPS 접속 확인 (해당시)
-```
-
-### 8.4 모니터링 및 알람 설정
-
-**CloudWatch 대시보드 생성:**
-
-```bash
-# CloudWatch 대시보드 JSON 파일 생성
-cat > cloudwatch-dashboard.json << 'EOF'
-{
-    "widgets": [
-        {
-            "type": "metric",
-            "properties": {
-                "metrics": [
-                    ["AWS/ElasticBeanstalk", "ApplicationLatency", "EnvironmentName", "development"],
-                    [".", ".", ".", "staging"],
-                    [".", ".", ".", "production"]
-                ],
-                "period": 300,
-                "stat": "Average",
-                "region": "ap-northeast-2",
-                "title": "Application Latency"
-            }
-        },
-        {
-            "type": "metric",
-            "properties": {
-                "metrics": [
-                    ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "awseb-AWSEB-*"],
-                    ["AWS/ApplicationELB", "HTTPCode_Target_2XX_Count", "LoadBalancer", "awseb-AWSEB-*"]
-                ],
-                "period": 300,
-                "stat": "Sum",
-                "region": "ap-northeast-2",
-                "title": "ALB Request Count"
-            }
-        }
-    ]
-}
-EOF
-
-# 대시보드 생성
-aws cloudwatch put-dashboard \
-    --dashboard-name "MyApp-EB-Dashboard" \
-    --dashboard-body file://cloudwatch-dashboard.json
-```
-
-**알람 설정:**
-
-```bash
-# High Latency 알람
-aws cloudwatch put-metric-alarm \
-    --alarm-name "Production-HighLatency" \
-    --alarm-description "Production High Latency" \
-    --metric-name ApplicationLatency \
-    --namespace AWS/ElasticBeanstalk \
-    --statistic Average \
-    --period 300 \
-    --threshold 2.0 \
-    --comparison-operator GreaterThanThreshold \
-    --dimensions Name=EnvironmentName,Value=production
-
-# ALB Target Health 알람
-aws cloudwatch put-metric-alarm \
-    --alarm-name "Production-UnhealthyTargets" \
-    --alarm-description "Production Unhealthy ALB Targets" \
-    --metric-name UnHealthyHostCount \
-    --namespace AWS/ApplicationELB \
-    --statistic Average \
-    --period 300 \
-    --threshold 1 \
-    --comparison-operator GreaterThanOrEqualToThreshold
+  aws:elbv2:listener:443:
+    ListenerEnabled: 'true'
+    Protocol: HTTPS
+    SSLCertificateArns: arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID
+    SSLPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
 ```
 
 ---
 
 ## 📋 완료 체크리스트
 
-### 브랜치 전략 및 기본 설정
+### 기본 설정
 
 - [ ] AWS 계정 및 IAM 사용자 생성
 - [ ] **IAMFullAccess 정책 추가** (중요!)
@@ -1439,41 +1562,134 @@ aws cloudwatch put-metric-alarm \
 - [ ] Development 환경 생성 (ALB 포함)
 - [ ] Production 환경 생성 (ALB 포함)
 
+### HTTPS 설정 (AWS 공식 문서 기반)
+
+- [ ] Route 53 도메인 확인
+- [ ] ACM SSL 인증서 요청
+- [ ] DNS 검증 레코드 추가
+- [ ] 인증서 검증 완료 확인
+- [ ] `.ebextensions/05-https-*.config` 파일 생성 (올바른 방법)
+- [ ] HTTPS 리스너 설정 (443 포트)
+- [ ] HTTP → HTTPS 리다이렉트 설정
+- [ ] Route 53 A 레코드 (Alias) 생성
+- [ ] 올바른 ALB Hosted Zone ID 사용
+
 ### CI/CD 파이프라인
 
-- [ ] GitHub Secrets 설정 (AWS_ACCESS_KEY, AWS_ACCESS_SECRET_KEY)
+- [ ] GitHub Secrets 설정
 - [ ] deploy-dev.yml 워크플로우 설정
 - [ ] deploy-rel.yml 워크플로우 설정 (Production 배포용)
 - [ ] deploy-production.yml 워크플로우 설정 (아카이브용)
-- [ ] PR 템플릿 생성
 
-### 배포 스크립트
+### 배포 스크립트 및 도구
 
 - [ ] deploy-dev.sh 스크립트 생성
-- [ ] deploy-rel.sh 스크립트 생성 (Production 배포용)
+- [ ] deploy-rel.sh 스크립트 생성 (HTTPS 확인 포함)
+- [ ] check-https.sh 스크립트 생성
 - [ ] Makefile 설정 (브랜치별 명령어)
 - [ ] workflow.sh 헬퍼 스크립트 생성
-
-### HTTPS 및 고급 설정
-
-- [ ] ALB 생성 확인 (모든 환경)
-- [ ] HTTPS 인증서 설정 (필요시)
-- [ ] 도메인 연결 (필요시)
-- [ ] CloudWatch 모니터링
-- [ ] 알람 설정
 
 ### 최종 확인
 
 - [ ] 모든 환경 정상 배포 확인
 - [ ] 헬스체크 응답 확인 (/health)
 - [ ] GitHub PR 워크플로우 테스트
+- [ ] **HTTP → HTTPS 리다이렉트 동작 확인**
+- [ ] **HTTPS 접속 정상 확인**
+- [ ] **SSL 인증서 정보 확인**
+- [ ] ALB 리스너 정상 동작 확인
 - [ ] 브랜치별 자동 배포 확인
-- [ ] 로그 정상 출력 확인
-- [ ] ALB 정상 동작 확인
 
 ---
 
-## 🚨 트러블슈팅
+## 🚨 트러블슈팅 (HTTPS 관련 추가)
+
+### HTTPS 관련 문제
+
+#### 1. HTTPS 리스너 생성 실패
+
+```bash
+# 오류: "A listener with port 443 already exists"
+# 해결: 콘솔에서 생성된 리스너와 충돌
+
+# 기존 리스너 확인
+aws elbv2 describe-listeners \
+    --load-balancer-arn $(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn' --output text)
+
+# 해결방법 1: option_settings만 사용 (리스너가 이미 있는 경우)
+# .ebextensions/05-https-existing.config
+option_settings:
+  aws:elbv2:listener:443:
+    ListenerEnabled: 'true'
+    Protocol: HTTPS
+    SSLCertificateArns: arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID
+
+# 해결방법 2: 기존 리스너 삭제 후 재생성
+aws elbv2 delete-listener --listener-arn EXISTING-LISTENER-ARN
+```
+
+#### 2. SSL 인증서 오류
+
+```bash
+# 오류: "Certificate not found" 또는 "Invalid certificate ARN"
+
+# 인증서 ARN 재확인
+aws acm list-certificates --region ap-northeast-2 \
+    --query 'CertificateSummaryList[*].{Domain:DomainName,Arn:CertificateArn,Status:Status}'
+
+# 인증서 상태 확인 (ISSUED 여야 함)
+aws acm describe-certificate \
+    --certificate-arn arn:aws:acm:ap-northeast-2:YOUR-ACCOUNT:certificate/YOUR-CERT-ID
+
+# 다른 리전에 인증서가 있는지 확인
+aws acm list-certificates --region us-east-1
+```
+
+#### 3. HTTP 리다이렉트가 작동하지 않음
+
+```bash
+# 원인: Classic Load Balancer 사용 중
+# 확인방법
+aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].Type'
+
+# 해결: Application Load Balancer로 환경 재생성
+eb create production-new \
+    --elb-type application \
+    --instance_type t3.medium
+```
+
+#### 4. Route 53 도메인 연결 실패
+
+```bash
+# 오류: "InvalidChangeBatch" 또는 "Alias target does not exist"
+
+# ALB DNS 이름 정확히 확인
+ALB_DNS=$(eb status production | grep CNAME | awk '{print $2}')
+echo "ALB DNS: $ALB_DNS"
+
+# 올바른 Hosted Zone ID 사용 (리전별)
+# 서울(ap-northeast-2): ZWKZPGTI48KDX
+# 확인 방법:
+aws elbv2 describe-load-balancers \
+    --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].CanonicalHostedZoneId'
+```
+
+#### 5. Mixed Content 오류 (HTTPS에서 HTTP 리소스 로드)
+
+```bash
+# 해결: 애플리케이션에서 HTTPS 감지 설정
+# src/main.ts에 추가
+app.set('trust proxy', 1); // ALB 뒤에서 실행되므로
+
+# 또는 Express.js의 경우
+app.use((req, res, next) => {
+  if (req.header('x-forwarded-proto') !== 'https') {
+    res.redirect(`https://${req.header('host')}${req.url}`);
+  } else {
+    next();
+  }
+});
+```
 
 ### ALB 및 HTTPS 관련
 
@@ -1482,24 +1698,39 @@ aws cloudwatch put-metric-alarm \
 ```bash
 # ALB 목록 확인
 aws elbv2 describe-load-balancers \
-    --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].{Name:LoadBalancerName,DNS:DNSName,State:State}'
+    --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].{Name:LoadBalancerName,DNS:DNSName,State:State,Type:Type}'
 
 # ALB 타겟 그룹 상태 확인
 aws elbv2 describe-target-health \
     --target-group-arn $(aws elbv2 describe-target-groups --query 'TargetGroups[0].TargetGroupArn' --output text)
 ```
 
-#### 2. HTTPS 인증서 문제
+#### 2. SSL Policy 업데이트
 
 ```bash
-# 인증서 상태 확인
-aws acm list-certificates \
-    --query 'CertificateSummaryList[*].{Domain:DomainName,Status:Status,Arn:CertificateArn}'
+# 최신 SSL 정책으로 업데이트
+# .ebextensions/ssl-policy-update.config
+option_settings:
+  aws:elbv2:listener:443:
+    SSLPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
 
-# DNS 검증 레코드 확인
-aws acm describe-certificate \
-    --certificate-arn YOUR-CERT-ARN \
-    --query 'Certificate.DomainValidationOptions'
+# 또는 CLI로 직접 업데이트
+aws elbv2 modify-listener \
+    --listener-arn YOUR-LISTENER-ARN \
+    --ssl-policy ELBSecurityPolicy-TLS13-1-2-2021-06
+```
+
+#### 3. HTTPS 헬스체크 설정
+
+```bash
+# HTTPS 엔드포인트로 헬스체크 변경
+# .ebextensions/https-health.config
+option_settings:
+  aws:elasticbeanstalk:environment:process:default:
+    Port: 8080
+    Protocol: HTTP
+    HealthCheckPath: /health
+    # ALB는 백엔드와 HTTP로 통신하므로 Protocol은 HTTP 유지
 ```
 
 ### 브랜치 전략 관련
@@ -1510,11 +1741,14 @@ aws acm describe-certificate \
 # GitHub Actions 워크플로우 파일 확인
 ls -la .github/workflows/
 
-# Secrets 설정 확인
-# GitHub Repository → Settings → Secrets and variables → Actions
+# 워크플로우 실행 로그 확인 (GitHub Actions 탭에서)
+# 일반적인 원인:
+# - AWS 자격증명 오류
+# - 브랜치 보호 규칙 충돌
+# - EB 환경 이름 불일치
 
-# 브랜치 보호 규칙 확인
-# GitHub Repository → Settings → Branches
+# Secrets 재설정
+# GitHub Repository → Settings → Secrets and variables → Actions
 ```
 
 #### 2. 잘못된 브랜치에서 배포 시도
@@ -1527,70 +1761,57 @@ git branch --show-current
 make switch-dev    # dev 브랜치로
 make switch-rel    # rel 브랜치로
 make switch-main   # main 브랜치로
+
+# 브랜치 보호 설정으로 강제 차단
 ```
 
-#### 3. 브랜치 동기화 문제
-
-```bash
-# dev → rel 동기화
-make sync-dev-to-rel
-
-# rel → main 동기화
-make sync-rel-to-main
-
-# 수동 동기화
-git checkout rel
-git pull origin rel
-git merge origin/dev
-git push origin rel
-```
-
-### 환경별 배포 문제
-
-#### 1. 환경별 설정 차이로 인한 오류
+#### 3. 환경별 설정 차이로 인한 오류
 
 ```bash
 # 환경별 환경변수 확인
 eb printenv development
-eb printenv staging
 eb printenv production
 
-# 설정 파일 확인
-cat .ebextensions/01-environment.config
+# 환경별 설정 파일 분리
+# .ebextensions/dev-specific.config (Development용)
+# .ebextensions/prod-specific.config (Production용)
 ```
 
-#### 2. 특정 환경에서만 발생하는 오류
+### 성능 및 모니터링
+
+#### 1. ALB 접속 로그 활성화
 
 ```bash
-# 환경별 로그 확인
-make logs-dev
-make logs-rel
-make logs-prod
+# .ebextensions/alb-logs.config
+option_settings:
+  aws:elbv2:loadbalancer:
+    AccessLogsS3Enabled: true
+    AccessLogsS3Bucket: my-app-alb-logs
+    AccessLogsS3Prefix: production
 
-# 환경별 상태 비교
-make status-all
-make health-all
+# S3 버킷 생성
+aws s3 mb s3://my-app-alb-logs
 ```
 
-#### 3. ALB 헬스체크 실패
+#### 2. CloudWatch 메트릭 설정
 
 ```bash
-# ALB 타겟 그룹 헬스체크 확인
-eb health production
-
-# 애플리케이션 헬스체크 엔드포인트 테스트
-curl http://your-alb-dns/health
-
-# ALB 리스너 규칙 확인
-aws elbv2 describe-rules \
-    --listener-arn $(aws elbv2 describe-listeners --load-balancer-arn YOUR-ALB-ARN --query 'Listeners[0].ListenerArn' --output text)
+# ALB 메트릭 확인
+aws cloudwatch get-metric-statistics \
+    --namespace AWS/ApplicationELB \
+    --metric-name RequestCount \
+    --dimensions Name=LoadBalancer,Value=app/awseb-AWSEB-XXX/XXX \
+    --start-time 2024-01-01T00:00:00Z \
+    --end-time 2024-01-01T23:59:59Z \
+    --period 3600 \
+    --statistics Sum
 ```
 
 ---
 
 ## 🎉 완료!
 
-이제 완전한 **브랜치 전략 기반 NestJS + Docker + Elastic Beanstalk + ALB + HTTPS 지원 + CI/CD** 환경이 구축되었습니다!
+이제 **AWS 공식 문서 기반의 완전한 브랜치 전략 + NestJS + Docker + Elastic Beanstalk + ALB + HTTPS 지원 + CI/CD** 환경이 구축되었습니다!
 
 ### 🚀 일반적인 개발 워크플로우
 
@@ -1615,17 +1836,28 @@ git push origin feature/login-improvement
 
 ```bash
 # dev → rel PR 생성 및 머지
-# PR 머지 시 자동 배포됨 + Release 생성 (ALB 포함)
+# PR 머지 시 자동 배포됨 + Release 생성 + HTTPS 활성화
 # 또는 수동: make deploy-prod
+```
+
+**4. HTTPS 확인:**
+
+```bash
+make check-https
+./workflow.sh https
 ```
 
 ### 📱 유용한 명령어들
 
 ```bash
 # 전체 상황 파악
-make info
+make help
 make status-all
 make health-all
+
+# HTTPS 관련
+make check-https
+curl -I https://yourdomain.com
 
 # 브랜치별 배포
 make deploy-dev MSG="새 기능 테스트"
@@ -1634,27 +1866,59 @@ make deploy-prod MSG="v1.2.0 릴리즈"
 # 워크플로우 도움말
 ./workflow.sh help
 
-# 빠른 개발 시작
-./workflow.sh feature my-new-feature
-
-# ALB 상태 확인
-aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)]'
+# ALB 및 HTTPS 상태 확인
+aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].LoadBalancerArn' --output text)
 ```
 
-### 🔒 HTTPS 활성화
+### 🔒 HTTPS 완전 활성화 확인
 
-SSL 인증서 발급 후:
+```bash
+# 1. HTTP → HTTPS 리다이렉트 확인
+curl -I http://yourdomain.com
+# Expected: 301 Moved Permanently, Location: https://yourdomain.com
 
-1. `.ebextensions/05-https.config` 파일에 인증서 ARN 입력
-2. `eb deploy` 실행
-3. HTTPS 접속 확인
+# 2. HTTPS 접속 확인
+curl -I https://yourdomain.com
+# Expected: 200 OK
+
+# 3. SSL 등급 확인
+# https://www.ssllabs.com/ssltest/analyze.html?d=yourdomain.com
+
+# 4. 통합 확인
+./check-https.sh
+```
+
+### 🎯 핵심 개선사항 (AWS 공식 문서 기반)
+
+**✅ 올바른 HTTPS 설정:**
+
+- AWS 공식 권장 방법 사용
+- `option_settings`와 `Resources` 올바른 조합
+- Classic LB 대신 ALB 전용 설정
+- 최신 TLS 1.3 보안 정책
+
+**✅ 완전한 브랜치 전략:**
+
+- feature → dev → rel 플로우
+- 자동화된 배포 파이프라인
+- 환경별 설정 분리
+- HTTPS 배포 후 자동 검증
+
+**✅ 엔터프라이즈급 설정:**
+
+- 고가용성 Production 환경
+- 포괄적인 모니터링
+- 보안 헤더 설정
+- 자동 SSL 인증서 갱신
 
 완벽한 엔터프라이즈급 개발 환경이 완성되었습니다! 🎊
 
 **주요 특징:**
 
-- ✅ 모든 환경에 ALB 포함 (HTTPS 준비 완료)
+- ✅ AWS 공식 문서 기반 HTTPS 설정
+- ✅ 모든 환경에 ALB 포함
+- ✅ 자동 HTTP → HTTPS 리다이렉트
 - ✅ 브랜치 전략 기반 자동 배포
 - ✅ 고가용성 프로덕션 환경
-- ✅ 포괄적인 모니터링 및 알람
 - ✅ 완전 자동화된 CI/CD 파이프라인
+- ✅ 포괄적인 모니터링 및 알람
