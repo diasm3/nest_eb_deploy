@@ -1,22 +1,19 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
 
+// app.controller.ts
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
-
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
-  }
-
-  @Get()
-  getHealth(): string {
-    return 'OK';
+  getRoot(): string {
+    return 'NestJS App is running!';
   }
 
   @Get('health')
-  healthCheck(): object {
-    return { status: 'ok', timestamp: new Date().toISOString() };
+  healthCheck() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    };
   }
 }
