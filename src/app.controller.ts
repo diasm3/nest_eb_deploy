@@ -4,11 +4,6 @@ import { Controller, Get } from '@nestjs/common';
 @Controller()
 export class AppController {
   @Get()
-  helloworld(): string {
-    return 'hello world';
-  }
-
-  @Get()
   getRoot(): string {
     return 'NestJS App is running!';
   }
