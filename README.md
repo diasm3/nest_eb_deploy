@@ -9,7 +9,10 @@ _새로운 AWS 계정에서 NestJS Docker 프로젝트를 Elastic Beanstalk으�
 ## 🗺️ 전체 플로우차트
 
 <!-- 또는 HTML 태그 사용 (크기 조절 가능) -->
-<img src="./flow-chart.svg" alt="플로우차트" width="50%">
+
+<div align="center">
+  <img src="./docs/images/flow-chart.png" alt="Elastic Beanstalk HTTPS 설정 플로우차트" width="100%">
+</div>
 
 ## 🎯 설정 완료 후 결과
 
