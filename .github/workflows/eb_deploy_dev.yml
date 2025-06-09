@@ -35,7 +35,7 @@ jobs:
         run: zip -r deploy.zip . -x "**node_modules**" "**.git**" "**.github**"
 
       - name: Deploy to EB
-        uses: einaregilsson/beanstalk-deploy@v21
+        uses: einaregilsson/beanstalk-deploy@v22
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
           aws_secret_key: ${{ secrets.AWS_ACCESS_SECRET_KEY }}
