@@ -9,6 +9,11 @@ export class AppController {
   }
 
   @Get()
+  helloworld2(): string {
+    return 'hello world';
+  }
+
+  @Get()
   getRoot(): string {
     return 'NestJS App is running!';
   }
