@@ -1,0 +1,217 @@
+<svg viewBox="0 0 1400 2000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-family: 'Arial', sans-serif; font-size: 24px; font-weight: bold; fill: #2c3e50; }
+      .subtitle { font-family: 'Arial', sans-serif; font-size: 14px; fill: #34495e; }
+      .step-title { font-family: 'Arial', sans-serif; font-size: 16px; font-weight: bold; fill: white; }
+      .step-text { font-family: 'Arial', sans-serif; font-size: 12px; fill: white; }
+      .decision-text { font-family: 'Arial', sans-serif; font-size: 11px; fill: #2c3e50; }
+      .arrow { stroke: #34495e; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .yes-arrow { stroke: #27ae60; stroke-width: 2; fill: none; marker-end: url(#arrowhead-green); }
+      .no-arrow { stroke: #e74c3c; stroke-width: 2; fill: none; marker-end: url(#arrowhead-red); }
+      
+      .aws-box { fill: #ff9900; stroke: #cc7a00; stroke-width: 2; }
+      .project-box { fill: #3498db; stroke: #2980b9; stroke-width: 2; }
+      .eb-box { fill: #9b59b6; stroke: #8e44ad; stroke-width: 2; }
+      .github-box { fill: #2ecc71; stroke: #27ae60; stroke-width: 2; }
+      .https-box { fill: #e67e22; stroke: #d35400; stroke-width: 2; }
+      .deploy-box { fill: #34495e; stroke: #2c3e50; stroke-width: 2; }
+      .test-box { fill: #16a085; stroke: #138d75; stroke-width: 2; }
+      .decision-box { fill: #f39c12; stroke: #e67e22; stroke-width: 2; }
+      .final-box { fill: #27ae60; stroke: #229954; stroke-width: 2; }
+    </style>
+    
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34495e" />
+    </marker>
+    
+    <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#27ae60" />
+    </marker>
+    
+    <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="700" y="30" text-anchor="middle" class="title">Elastic Beanstalk + HTTPS 완전 설정 가이드</text>
+  <text x="700" y="50" text-anchor="middle" class="subtitle">NestJS + Docker + ALB + Route 53 + GitHub Actions CI/CD</text>
+
+  <!-- 1. AWS 계정 설정 -->
+  <rect x="550" y="80" width="300" height="80" rx="10" class="aws-box"/>
+  <text x="700" y="105" text-anchor="middle" class="step-title">1️⃣ AWS 계정 설정</text>
+  <text x="700" y="125" text-anchor="middle" class="step-text">• IAM 사용자 생성 (IAMFullAccess 필수)</text>
+  <text x="700" y="140" text-anchor="middle" class="step-text">• AWS CLI 설정</text>
+  <text x="700" y="155" text-anchor="middle" class="step-text">• 서비스 롤 생성</text>
+
+  <!-- Arrow down -->
+  <line x1="700" y1="160" x2="700" y2="190" class="arrow"/>
+
+  <!-- 2. NestJS 프로젝트 설정 -->
+  <rect x="550" y="200" width="300" height="80" rx="10" class="project-box"/>
+  <text x="700" y="225" text-anchor="middle" class="step-title">2️⃣ NestJS 프로젝트 설정</text>
+  <text x="700" y="245" text-anchor="middle" class="step-text">• Dockerfile 작성 (Multi-stage build)</text>
+  <text x="700" y="260" text-anchor="middle" class="step-text">• main.ts 포트 설정 (0.0.0.0:8080)</text>
+  <text x="700" y="275" text-anchor="middle" class="step-text">• 헬스체크 엔드포인트 (/health)</text>
+
+  <!-- Arrow down -->
+  <line x1="700" y1="280" x2="700" y2="310" class="arrow"/>
+
+  <!-- 3. Elastic Beanstalk 설정 -->
+  <rect x="550" y="320" width="300" height="80" rx="10" class="eb-box"/>
+  <text x="700" y="345" text-anchor="middle" class="step-title">3️⃣ Elastic Beanstalk 설정</text>
+  <text x="700" y="365" text-anchor="middle" class="step-text">• .ebextensions 설정 파일 생성</text>
+  <text x="700" y="380" text-anchor="middle" class="step-text">• ALB 환경 생성 (--elb-type application)</text>
+  <text x="700" y="395" text-anchor="middle" class="step-text">• 첫 배포 및 동작 확인</text>
+
+  <!-- Arrow down -->
+  <line x1="700" y1="400" x2="700" y2="430" class="arrow"/>
+
+  <!-- 4. 브랜치 전략 설정 -->
+  <rect x="550" y="440" width="300" height="80" rx="10" class="github-box"/>
+  <text x="700" y="465" text-anchor="middle" class="step-title">4️⃣ 브랜치 전략 & CI/CD</text>
+  <text x="700" y="485" text-anchor="middle" class="step-text">• dev/rel/main 브랜치 생성</text>
+  <text x="700" y="500" text-anchor="middle" class="step-text">• GitHub Actions 워크플로우</text>
+  <text x="700" y="515" text-anchor="middle" class="step-text">• 환경별 자동 배포 설정</text>
+
+  <!-- Arrow down -->
+  <line x1="700" y1="520" x2="700" y2="550" class="arrow"/>
+
+  <!-- HTTPS 설정 Decision -->
+  <polygon points="700,560 800,600 700,640 600,600" class="decision-box"/>
+  <text x="700" y="595" text-anchor="middle" class="decision-text">HTTPS 설정</text>
+  <text x="700" y="610" text-anchor="middle" class="decision-text">필요?</text>
+
+  <!-- Yes Branch (HTTPS) -->
+  <line x1="750" y1="600" x2="850" y2="600" class="yes-arrow"/>
+  <text x="810" y="590" text-anchor="middle" class="decision-text" fill="#27ae60">Yes</text>
+
+  <!-- 5A. Route 53 & ACM 설정 -->
+  <rect x="900" y="560" width="280" height="80" rx="10" class="https-box"/>
+  <text x="1040" y="585" text-anchor="middle" class="step-title">5A️⃣ Route 53 & ACM</text>
+  <text x="1040" y="605" text-anchor="middle" class="step-text">• 도메인 호스팅 존 확인</text>
+  <text x="1040" y="620" text-anchor="middle" class="step-text">• SSL 인증서 요청 (DNS 검증)</text>
+  <text x="1040" y="635" text-anchor="middle" class="step-text">• 검증 레코드 추가</text>
+
+  <!-- Arrow down -->
+  <line x1="1040" y1="640" x2="1040" y2="670" class="arrow"/>
+
+  <!-- 5B. ALB HTTPS 설정 -->
+  <rect x="900" y="680" width="280" height="100" rx="10" class="https-box"/>
+  <text x="1040" y="705" text-anchor="middle" class="step-title">5B️⃣ ALB HTTPS 설정</text>
+  <text x="1040" y="725" text-anchor="middle" class="step-text">• .ebextensions/05-https.config</text>
+  <text x="1040" y="740" text-anchor="middle" class="step-text">• 443 리스너 (AWS 공식 방법)</text>
+  <text x="1040" y="755" text-anchor="middle" class="step-text">• HTTP→HTTPS 리다이렉트</text>
+  <text x="1040" y="770" text-anchor="middle" class="step-text">• TLS 1.3 보안 정책</text>
+
+  <!-- Arrow down -->
+  <line x1="1040" y1="780" x2="1040" y2="810" class="arrow"/>
+
+  <!-- 5C. 도메인 연결 -->
+  <rect x="900" y="820" width="280" height="80" rx="10" class="https-box"/>
+  <text x="1040" y="845" text-anchor="middle" class="step-title">5C️⃣ 도메인 연결</text>
+  <text x="1040" y="865" text-anchor="middle" class="step-text">• Route 53 A 레코드 (Alias)</text>
+  <text x="1040" y="880" text-anchor="middle" class="step-text">• 올바른 ALB Hosted Zone ID</text>
+  <text x="1040" y="895" text-anchor="middle" class="step-text">• www 서브도메인 설정</text>
+
+  <!-- No Branch (Skip HTTPS) -->
+  <line x1="650" y1="600" x2="550" y2="600" class="no-arrow"/>
+  <text x="590" y="590" text-anchor="middle" class="decision-text" fill="#e74c3c">No</text>
+
+  <!-- Merge point -->
+  <line x1="550" y1="600" x2="550" y2="1020" class="arrow"/>
+  <line x1="1040" y1="900" x2="1040" y2="1020" class="arrow"/>
+  <line x1="550" y1="1020" x2="1040" y2="1020" class="arrow"/>
+  <circle cx="700" cy="1020" r="5" fill="#34495e"/>
+
+  <!-- Arrow down to deployment -->
+  <line x1="700" y1="1025" x2="700" y2="1055" class="arrow"/>
+
+  <!-- 6. 배포 스크립트 설정 -->
+  <rect x="550" y="1065" width="300" height="80" rx="10" class="deploy-box"/>
+  <text x="700" y="1090" text-anchor="middle" class="step-title">6️⃣ 배포 스크립트 설정</text>
+  <text x="700" y="1110" text-anchor="middle" class="step-text">• deploy-dev.sh / deploy-rel.sh</text>
+  <text x="700" y="1125" text-anchor="middle" class="step-text">• Makefile (브랜치별 명령어)</text>
+  <text x="700" y="1140" text-anchor="middle" class="step-text">• check-https.sh (검증 스크립트)</text>
+
+  <!-- Arrow down -->
+  <line x1="700" y1="1145" x2="700" y2="1175" class="arrow"/>
+
+  <!-- 7. 테스트 & 검증 -->
+  <rect x="550" y="1185" width="300" height="100" rx="10" class="test-box"/>
+  <text x="700" y="1210" text-anchor="middle" class="step-title">7️⃣ 테스트 & 검증</text>
+  <text x="700" y="1230" text-anchor="middle" class="step-text">• 로컬 Docker 테스트</text>
+  <text x="700" y="1245" text-anchor="middle" class="step-text">• 브랜치별 배포 테스트</text>
+  <text x="700" y="1260" text-anchor="middle" class="step-text">• HTTPS 리다이렉트 확인</text>
+  <text x="700" y="1275" text-anchor="middle" class="step-text">• GitHub Actions 워크플로우 테스트</text>
+
+  <!-- Arrow down -->
+  <line x1="700" y1="1285" x2="700" y2="1315" class="arrow"/>
+
+  <!-- Final Success -->
+  <rect x="400" y="1325" width="600" height="120" rx="15" class="final-box"/>
+  <text x="700" y="1355" text-anchor="middle" class="step-title" style="font-size: 20px;">🎉 완료!</text>
+  <text x="700" y="1380" text-anchor="middle" class="step-text">✅ NestJS + Docker + Elastic Beanstalk</text>
+  <text x="700" y="1395" text-anchor="middle" class="step-text">✅ ALB + HTTPS + 자동 리다이렉트</text>
+  <text x="700" y="1410" text-anchor="middle" class="step-text">✅ 브랜치 전략 기반 CI/CD</text>
+  <text x="700" y="1425" text-anchor="middle" class="step-text">✅ Route 53 도메인 + ACM 인증서</text>
+  <text x="700" y="1440" text-anchor="middle" class="step-text">✅ 엔터프라이즈급 자동화 환경</text>
+
+  <!-- Development Workflow Box -->
+  <rect x="50" y="1500" width="650" height="200" rx="10" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2"/>
+  <text x="375" y="1525" text-anchor="middle" class="step-title" style="fill: #2c3e50;">🔄 일반적인 개발 워크플로우</text>
+  
+  <text x="70" y="1550" class="step-text" style="fill: #2c3e50; font-weight: bold;">1. 새 기능 개발:</text>
+  <text x="70" y="1565" class="step-text" style="fill: #2c3e50;">./workflow.sh feature login-improvement</text>
+  <text x="70" y="1580" class="step-text" style="fill: #2c3e50;">git commit -m "feat: 로그인 개선" && git push</text>
+  <text x="70" y="1595" class="step-text" style="fill: #2c3e50;">GitHub에서 feature → dev PR 생성</text>
+  
+  <text x="70" y="1620" class="step-text" style="fill: #2c3e50; font-weight: bold;">2. 개발 환경 테스트:</text>
+  <text x="70" y="1635" class="step-text" style="fill: #2c3e50;">PR 머지 시 자동으로 Development 환경 배포</text>
+  
+  <text x="70" y="1660" class="step-text" style="fill: #2c3e50; font-weight: bold;">3. 프로덕션 배포:</text>
+  <text x="70" y="1675" class="step-text" style="fill: #2c3e50;">dev → rel PR 생성 및 머지</text>
+  <text x="70" y="1690" class="step-text" style="fill: #2c3e50;">자동으로 Production 배포 + HTTPS 활성화 + Release 생성</text>
+
+  <!-- Useful Commands Box -->
+  <rect x="750" y="1500" width="600" height="200" rx="10" fill="#f8f9fa" stroke="#bdc3c7" stroke-width="2"/>
+  <text x="1050" y="1525" text-anchor="middle" class="step-title" style="fill: #2c3e50;">💡 유용한 명령어들</text>
+  
+  <text x="770" y="1550" class="step-text" style="fill: #2c3e50; font-weight: bold;">브랜치별 배포:</text>
+  <text x="770" y="1565" class="step-text" style="fill: #2c3e50; font-family: monospace;">make deploy-dev MSG="새 기능 테스트"</text>
+  <text x="770" y="1580" class="step-text" style="fill: #2c3e50; font-family: monospace;">make deploy-prod MSG="v1.2.0 릴리즈"</text>
+  
+  <text x="770" y="1605" class="step-text" style="fill: #2c3e50; font-weight: bold;">HTTPS 검증:</text>
+  <text x="770" y="1620" class="step-text" style="fill: #2c3e50; font-family: monospace;">make check-https</text>
+  <text x="770" y="1635" class="step-text" style="fill: #2c3e50; font-family: monospace;">curl -I https://yourdomain.com</text>
+  
+  <text x="770" y="1660" class="step-text" style="fill: #2c3e50; font-weight: bold;">상태 확인:</text>
+  <text x="770" y="1675" class="step-text" style="fill: #2c3e50; font-family: monospace;">make status-all</text>
+  <text x="770" y="1690" class="step-text" style="fill: #2c3e50; font-family: monospace;">make health-all</text>
+
+  <!-- Key Features Box -->
+  <rect x="50" y="1750" width="1300" height="120" rx="10" fill="#2c3e50" stroke="#34495e" stroke-width="2"/>
+  <text x="700" y="1775" text-anchor="middle" class="step-title" style="font-size: 18px;">🚀 핵심 특징</text>
+  
+  <text x="70" y="1800" class="step-text">✅ AWS 공식 문서 기반 HTTPS 설정</text>
+  <text x="70" y="1815" class="step-text">✅ 자동 HTTP → HTTPS 리다이렉트</text>
+  <text x="70" y="1830" class="step-text">✅ 브랜치 전략 기반 자동 배포</text>
+  <text x="70" y="1845" class="step-text">✅ TLS 1.3 최신 보안 정책</text>
+  <text x="70" y="1860" class="step-text">✅ 고가용성 ALB 구성</text>
+  
+  <text x="700" y="1800" class="step-text">✅ ACM 자동 갱신 SSL 인증서</text>
+  <text x="700" y="1815" class="step-text">✅ Route 53 도메인 통합</text>
+  <text x="700" y="1830" class="step-text">✅ GitHub Actions CI/CD</text>
+  <text x="700" y="1845" class="step-text">✅ Docker Multi-stage Build</text>
+  <text x="700" y="1860" class="step-text">✅ 포괄적인 모니터링 및 로깅</text>
+
+  <!-- Branch Strategy Diagram -->
+  <rect x="50" y="1920" width="1300" height="60" rx="10" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2"/>
+  <text x="700" y="1940" text-anchor="middle" class="step-title" style="fill: #2c3e50;">🌿 브랜치 전략</text>
+  
+  <text x="100" y="1960" class="step-text" style="fill: #2c3e50; font-family: monospace;">feature/* → dev (PR) → Development 환경</text>
+  <text x="600" y="1960" class="step-text" style="fill: #2c3e50; font-family: monospace;">dev → rel (PR) → Production 환경 (HTTPS)</text>
+  <text x="1100" y="1960" class="step-text" style="fill: #2c3e50; font-family: monospace;">main (Archive)</text>
+
+</svg>
