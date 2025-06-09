@@ -1,4 +1,5 @@
-Elastic Beanstalk 완전 신규 설정 매뉴얼
+# Elastic Beanstalk 완전 신규 설정 매뉴얼
+
 _새로운 AWS 계정에서 NestJS Docker 프로젝트를 Elastic Beanstalk으로 배포하는 완벽 가이드_
 
 ---
@@ -8,7 +9,7 @@ _새로운 AWS 계정에서 NestJS Docker 프로젝트를 Elastic Beanstalk으�
 - ✅ NestJS + Docker 애플리케이션
 - ✅ Elastic Beanstalk 자동 배포
 - ✅ GitHub Actions CI/CD
-- ✅ HTTPS 지원 (선택사항)
+- ✅ HTTPS 지원 (ALB 기본 포함)
 - ✅ 도메인 연결 (선택사항)
 
 ---
@@ -56,13 +57,19 @@ eb --version
 사용자 이름: eb-deploy-user
 액세스 유형: ✅ 액세스 키 - 프로그래매틱 액세스
 
-권한 정책:
+권한 정책 (필수):
   - AWSElasticBeanstalkFullAccess
-  - IAMReadOnlyAccess
+  - IAMFullAccess (중요! 서비스 롤 생성용)
   - AmazonS3FullAccess
   - AmazonEC2FullAccess
+  - ElasticLoadBalancingFullAccess
+  - AutoScalingFullAccess
   - AWSCertificateManagerFullAccess (HTTPS용)
+  - CloudWatchFullAccess
+  - CloudFormationFullAccess
 ```
+
+**⚠️ 중요:** `IAMFullAccess` 정책이 없으면 Elastic Beanstalk가 필요한 서비스 롤을 생성할 수 없어 배포가 실패합니다.
 
 ### 1.2 AWS 자격증명 설정
 
@@ -78,6 +85,61 @@ Default output format: json
 
 # 설정 확인
 aws sts get-caller-identity
+```
+
+### 1.3 필수 서비스 롤 생성 (선택사항)
+
+IAM 권한이 충분하다면 Elastic Beanstalk가 자동으로 생성하지만, 수동으로 미리 생성할 수도 있습니다:
+
+```bash
+# EC2 인스턴스 롤 생성
+aws iam create-role \
+    --role-name aws-elasticbeanstalk-ec2-role \
+    --assume-role-policy-document '{
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "ec2.amazonaws.com"},
+                "Action": "sts:AssumeRole"
+            }
+        ]
+    }'
+
+# 정책 연결
+aws iam attach-role-policy \
+    --role-name aws-elasticbeanstalk-ec2-role \
+    --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+
+aws iam attach-role-policy \
+    --role-name aws-elasticbeanstalk-ec2-role \
+    --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+
+# 인스턴스 프로파일 생성
+aws iam create-instance-profile \
+    --instance-profile-name aws-elasticbeanstalk-ec2-role
+
+aws iam add-role-to-instance-profile \
+    --instance-profile-name aws-elasticbeanstalk-ec2-role \
+    --role-name aws-elasticbeanstalk-ec2-role
+
+# 서비스 롤 생성
+aws iam create-role \
+    --role-name aws-elasticbeanstalk-service-role \
+    --assume-role-policy-document '{
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "elasticbeanstalk.amazonaws.com"},
+                "Action": "sts:AssumeRole"
+            }
+        ]
+    }'
+
+aws iam attach-role-policy \
+    --role-name aws-elasticbeanstalk-service-role \
+    --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService
 ```
 
 ---
@@ -256,8 +318,19 @@ mkdir .ebextensions
 option_settings:
   aws:autoscaling:launchconfiguration:
     InstanceType: t3.small
+    IamInstanceProfile: aws-elasticbeanstalk-ec2-role
   aws:elasticbeanstalk:environment:
-    EnvironmentType: SingleInstance
+    EnvironmentType: LoadBalanced
+    LoadBalancerType: application
+    ServiceRole: aws-elasticbeanstalk-service-role
+  aws:autoscaling:asg:
+    MinSize: 1
+    MaxSize: 3
+  aws:autoscaling:updatepolicy:rollingupdate:
+    RollingUpdateEnabled: true
+    MinInstancesInService: 1
+    MaxBatchSize: 1
+    RollingUpdateType: Health
   aws:elasticbeanstalk:application:environment:
     NODE_ENV: production
     PORT: 8080
@@ -315,23 +388,44 @@ eb init
 ### 3.3 환경 생성
 
 ```bash
-# 환경 생성
-eb create production
-
-# 또는 설정과 함께 생성
+# 환경 생성 (HTTPS 지원을 위한 ALB 포함)
 eb create production \
-    --instance-type t3.small \
-    --single-instance \
-    --envvars NODE_ENV=production,PORT=8080
+    --elb-type application \
+    --instance_type t3.small \
+    --min-instances 1 \
+    --max-instances 3 \
+    --envvars NODE_ENV=production,PORT=8080 \
+    --service-role aws-elasticbeanstalk-service-role
+
+# 또는 기본 환경 생성 후 설정
+eb create production
 ```
+
+**⚠️ 일반적인 오류 해결:**
+
+만약 다음과 같은 오류가 발생하면:
+
+- `"option_settings" in one of the configuration files failed validation`
+- `You can't enable rolling updates for a single-instance environment`
+- `Insufficient IAM privileges`
+
+**해결방법:**
+
+1. IAM 사용자에 `IAMFullAccess` 정책이 있는지 확인
+2. 위의 1.3 단계의 서비스 롤 생성 명령어를 실행
+3. 환경을 LoadBalanced 타입으로 생성 (Single Instance 대신)
 
 ### 3.4 첫 배포
 
 ```bash
-# 첫 배포
-eb deploy production
+# 환경 생성 완료 확인
+eb status production
+eb health production
 
-# 상태 확인
+# 첫 배포
+eb deploy production --timeout 15
+
+# 배포 완료 후 최종 확인
 eb status production
 eb health production
 
@@ -348,8 +442,8 @@ eb open production
 **브랜치 구조:**
 
 ```
-main (보호됨)
-├── rel (릴리즈 브랜치) → Production 환경
+main (보호됨, 아카이브용)
+├── rel (릴리즈 브랜치) → Production 환경 (최종 배포)
 ├── dev (개발 브랜치) → Development 환경
 └── feature/* (기능 브랜치) → 로컬 개발
 ```
@@ -358,8 +452,7 @@ main (보호됨)
 
 ```
 1. feature/new-feature → dev (PR) → Development 배포
-2. dev → rel (PR) → Release(Staging) 배포
-3. rel → main (PR) → Production 배포
+2. dev → rel (PR) → Production 배포 (최종)
 ```
 
 ### 4.2 브랜치 생성 및 보호 설정
@@ -372,7 +465,7 @@ git push origin dev
 git checkout -b rel
 git push origin rel
 
-# main 브랜치로 돌아가기
+# main 브랜치로 돌아가기 (아카이브용)
 git checkout main
 ```
 
@@ -381,18 +474,19 @@ git checkout main
 ```
 Repository → Settings → Branches → Add rule
 
-main 브랜치:
+rel 브랜치 (최종 배포):
 ✅ Require pull request reviews before merging
 ✅ Require status checks to pass before merging
 ✅ Require branches to be up to date before merging
 ✅ Include administrators
 
-rel 브랜치:
-✅ Require pull request reviews before merging
-✅ Require status checks to pass before merging
-
 dev 브랜치:
+✅ Require pull request reviews before merging (optional)
 ✅ Require status checks to pass before merging (optional)
+
+main 브랜치 (아카이브):
+✅ Require pull request reviews before merging
+✅ Include administrators
 ```
 
 ### 4.3 GitHub Secrets 설정
@@ -407,8 +501,6 @@ Secrets 추가:
   # 환경별 설정 (선택사항)
   - DEV_APP_NAME: my-app
   - DEV_ENV_NAME: development
-  - REL_APP_NAME: my-app
-  - REL_ENV_NAME: staging
   - PROD_APP_NAME: my-app
   - PROD_ENV_NAME: production
 ```
@@ -476,75 +568,14 @@ jobs:
             })
 ```
 
-**.github/workflows/deploy-rel.yml** (rel 브랜치용):
-
-```yaml
-name: Deploy to Release/Staging
-on:
-  pull_request:
-    branches:
-      - rel
-    types:
-      - closed
-
-jobs:
-  deploy-staging:
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get Timestamp
-        uses: gerred/actions/current-time@master
-        id: current-time
-
-      - name: Run String Replace
-        uses: frabert/replace-string-action@master
-        id: format-time
-        with:
-          pattern: '[:\.]+'
-          string: '${{ steps.current-time.outputs.time }}'
-          replace-with: '-'
-          flags: 'g'
-
-      - name: Generate Deployment Package
-        run: zip -r deploy.zip . -x "**node_modules**" "**.git**" "**.github**"
-
-      - name: Deploy to Staging
-        uses: einaregilsson/beanstalk-deploy@v21
-        with:
-          aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
-          aws_secret_key: ${{ secrets.AWS_ACCESS_SECRET_KEY }}
-          application_name: ${{ secrets.REL_APP_NAME || 'my-app' }}
-          environment_name: ${{ secrets.REL_ENV_NAME || 'staging' }}
-          version_label: 'rel-${{ steps.format-time.outputs.replaced }}'
-          region: ap-northeast-2
-          deployment_package: deploy.zip
-          wait_for_environment_recovery: 300
-          version_description: 'Release: ${{ github.event.pull_request.title }}'
-
-      - name: Comment PR
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '🎯 Staging 환경에 배포 완료!\n배포 버전: rel-${{ steps.format-time.outputs.replaced }}\n\n✅ QA 테스트 후 Production 배포를 진행해주세요.'
-            })
-```
-
-**.github/workflows/deploy-production.yml** (main 브랜치용):
+**.github/workflows/deploy-rel.yml** (rel 브랜치용 - 최종 배포):
 
 ```yaml
 name: Deploy to Production
 on:
   pull_request:
     branches:
-      - main
+      - rel
     types:
       - closed
 
@@ -614,48 +645,101 @@ jobs:
             })
 ```
 
-### 4.5 환경별 EB 환경 생성
+**.github/workflows/deploy-production.yml** (main 브랜치용 - 아카이브):
+
+```yaml
+# 이 워크플로우는 필요시에만 사용 (아카이브 목적)
+name: Archive to Main
+on:
+  workflow_dispatch: # 수동 실행만 허용
+    inputs:
+      reason:
+        description: 'Archive reason'
+        required: true
+        type: string
+
+jobs:
+  archive-to-main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Archive Tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          TAG="archive-$(date '+%Y%m%d-%H%M%S')"
+          git tag -a "$TAG" -m "Archive: ${{ github.event.inputs.reason }}"
+          git push origin "$TAG"
+
+          echo "🏷️ Archive 태그 생성: $TAG"
+```
+
+### 4.5 환경별 EB 환경 생성 (HTTPS 지원)
 
 ```bash
-# Development 환경 생성
+# Development 환경 생성 (ALB 포함 - HTTPS 준비)
 eb create development \
-    --instance-type t3.micro \
-    --single-instance \
-    --envvars NODE_ENV=development,PORT=8080
+    --elb-type application \
+    --instance_type t3.micro \
+    --min-instances 1 \
+    --max-instances 1 \
+    --envvars NODE_ENV=development,PORT=8080,LOG_LEVEL=debug \
+    --service-role aws-elasticbeanstalk-service-role
 
-# Staging 환경 생성
-eb create staging \
-    --instance-type t3.small \
-    --single-instance \
-    --envvars NODE_ENV=staging,PORT=8080
-
-# Production 환경 생성
+# Production 환경 생성 (ALB 포함 - 고가용성 + HTTPS)
 eb create production \
     --elb-type application \
-    --instance-type t3.small \
-    --min-instances 1 \
-    --max-instances 3 \
-    --envvars NODE_ENV=production,PORT=8080
+    --instance_type t3.medium \
+    --min-instances 2 \
+    --max-instances 5 \
+    --envvars NODE_ENV=production,PORT=8080,LOG_LEVEL=warn \
+    --keyname prod-keypair \
+    --tags Environment=Production,SSL=Ready \
+    --service-role aws-elasticbeanstalk-service-role
+
+# 최소 비용 개발환경 (HTTPS 불가, 서비스 롤 필요)
+eb create development-minimal \
+    --single \
+    --instance_type t3.micro \
+    --envvars NODE_ENV=development,PORT=8080 \
+    --service-role aws-elasticbeanstalk-service-role
 ```
+
+**⚠️ 환경 생성 시 주의사항:**
+
+- `--service-role` 옵션을 반드시 포함하여 IAM 권한 문제 방지
+- Single Instance 환경에서는 Rolling Update 설정을 .ebextensions에서 제거해야 함
+- IAMFullAccess 정책이 없으면 서비스 롤 자동 생성 실패
 
 ---
 
-## 🔐 5단계: HTTPS 설정 (선택사항)
+## 🔐 5단계: HTTPS 설정 (ALB 기본 포함됨)
 
-### 5.1 Load Balanced 환경으로 변경
+### 5.1 환경별 로드밸런서 설정 (이미 생성 시 포함됨)
 
-**.ebextensions/04-load-balancer.config:**
+모든 환경에 이미 ALB가 포함되어 있으므로 별도 설정 불필요하며, 필요 시 환경별 세부 조정만 진행합니다.
+
+**Development 환경용 (.ebextensions/dev-load-balancer.config):**
 
 ```yaml
 option_settings:
-  aws:elasticbeanstalk:environment:
-    EnvironmentType: LoadBalanced
-    LoadBalancerType: application
-  aws:autoscaling:asg:
-    MinSize: 1
-    MaxSize: 2
   aws:elbv2:loadbalancer:
     IdleTimeout: 60
+```
+
+**Production 환경용 (.ebextensions/prod-load-balancer.config):**
+
+```yaml
+option_settings:
+  aws:elbv2:loadbalancer:
+    IdleTimeout: 300
+  aws:elbv2:listener:default:
+    Protocol: HTTP
+    Port: 80
 ```
 
 ### 5.2 SSL 인증서 발급
@@ -745,7 +829,7 @@ else
 fi
 ```
 
-**deploy-rel.sh (Staging 환경용):**
+**deploy-rel.sh (Production 환경용 - 최종 배포):**
 
 ```bash
 #!/bin/bash
@@ -758,14 +842,14 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${BLUE}🎯 Staging 환경 배포${NC}"
+echo -e "${RED}🎉 Production 환경 배포 (rel 브랜치)${NC}"
 echo "=================================="
 
 # Git 브랜치 확인
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 if [ "$CURRENT_BRANCH" != "rel" ]; then
     echo -e "${RED}❌ 현재 브랜치: $CURRENT_BRANCH${NC}"
-    echo "Staging 배포는 rel 브랜치에서만 가능합니다."
+    echo "Production 배포는 rel 브랜치에서만 가능합니다."
     exit 1
 fi
 
@@ -776,68 +860,6 @@ BEHIND=$(git rev-list --count HEAD..origin/dev)
 if [ $BEHIND -gt 0 ]; then
     echo -e "${YELLOW}⚠️ rel 브랜치가 dev 브랜치보다 $BEHIND 커밋 뒤에 있습니다.${NC}"
     echo "dev 브랜치를 rel에 머지해주세요."
-    exit 1
-fi
-
-# 메시지 설정
-MESSAGE=${1:-"Staging deployment $(date '+%Y-%m-%d %H:%M:%S')"}
-
-echo -e "${YELLOW}🔔 Staging 환경에 배포합니다.${NC}"
-echo "메시지: $MESSAGE"
-read -p "계속 진행하시겠습니까? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    exit 0
-fi
-
-# 배포
-eb deploy staging --message "$MESSAGE" --timeout 15
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Staging 배포 완료!${NC}"
-    eb health staging
-    echo ""
-    echo "🌐 Staging URL:"
-    eb status staging | grep CNAME
-    echo ""
-    echo -e "${YELLOW}📝 QA 테스트 후 Production 배포를 진행해주세요.${NC}"
-else
-    echo "❌ 배포 실패"
-    exit 1
-fi
-```
-
-**deploy-prod.sh (Production 환경용):**
-
-```bash
-#!/bin/bash
-set -e
-
-# 색상 정의
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-echo -e "${RED}🎉 Production 환경 배포${NC}"
-echo "=================================="
-
-# Git 브랜치 확인
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "main" ]; then
-    echo -e "${RED}❌ 현재 브랜치: $CURRENT_BRANCH${NC}"
-    echo "Production 배포는 main 브랜치에서만 가능합니다."
-    exit 1
-fi
-
-# rel 브랜치와 동기화 확인
-echo "📋 rel 브랜치와의 동기화 확인..."
-git fetch origin rel
-BEHIND=$(git rev-list --count HEAD..origin/rel)
-if [ $BEHIND -gt 0 ]; then
-    echo -e "${YELLOW}⚠️ main 브랜치가 rel 브랜치보다 $BEHIND 커밋 뒤에 있습니다.${NC}"
-    echo "rel 브랜치를 main에 머지해주세요."
     exit 1
 fi
 
@@ -893,7 +915,7 @@ fi
 
 ```makefile
 # Makefile (브랜치 전략 지원)
-.PHONY: help deploy-dev deploy-rel deploy-prod status-all health-all logs-all
+.PHONY: help deploy-dev deploy-prod status-all health-all logs-all
 
 # 색상 정의
 BLUE = \033[0;34m
@@ -916,75 +938,57 @@ help:
 	@echo ""
 	@echo "배포 명령어:"
 	@echo "  $(GREEN)make deploy-dev$(NC)      - Development 환경 배포 (dev 브랜치)"
-	@echo "  $(GREEN)make deploy-rel$(NC)      - Staging 환경 배포 (rel 브랜치)"
-	@echo "  $(GREEN)make deploy-prod$(NC)     - Production 환경 배포 (main 브랜치)"
+	@echo "  $(GREEN)make deploy-prod$(NC)     - Production 환경 배포 (rel 브랜치)"
 	@echo ""
 	@echo "모니터링 명령어:"
 	@echo "  $(GREEN)make status-all$(NC)      - 모든 환경 상태 확인"
 	@echo "  $(GREEN)make health-all$(NC)      - 모든 환경 헬스 체크"
 	@echo "  $(GREEN)make logs-dev$(NC)        - Development 로그"
-	@echo "  $(GREEN)make logs-rel$(NC)        - Staging 로그"
 	@echo "  $(GREEN)make logs-prod$(NC)       - Production 로그"
 	@echo ""
 	@echo "개별 환경 명령어:"
 	@echo "  $(GREEN)make dev-status$(NC)      - Development 상태"
-	@echo "  $(GREEN)make rel-status$(NC)      - Staging 상태"
 	@echo "  $(GREEN)make prod-status$(NC)     - Production 상태"
 	@echo ""
 	@echo "브랜치 관리:"
 	@echo "  $(GREEN)make switch-dev$(NC)      - dev 브랜치로 전환"
-	@echo "  $(GREEN)make switch-rel$(NC)      - rel 브랜치로 전환"
-	@echo "  $(GREEN)make switch-main$(NC)     - main 브랜치로 전환"
+	@echo "  $(GREEN)make switch-rel$(NC)      - rel 브랜치로 전환 (Production)"
+	@echo "  $(GREEN)make switch-main$(NC)     - main 브랜치로 전환 (아카이브)"
 
 # 배포 명령어
 deploy-dev:
 	@echo "$(BLUE)🚀 Development 환경 배포$(NC)"
 	@./deploy-dev.sh "$(MSG)"
 
-deploy-rel:
-	@echo "$(BLUE)🎯 Staging 환경 배포$(NC)"
-	@./deploy-rel.sh "$(MSG)"
-
 deploy-prod:
 	@echo "$(RED)🎉 Production 환경 배포$(NC)"
-	@./deploy-prod.sh "$(MSG)"
+	@./deploy-rel.sh "$(MSG)"
 
 # 상태 확인
 dev-status:
 	@echo "$(BLUE)📊 Development 상태$(NC)"
 	@eb status development
 
-rel-status:
-	@echo "$(BLUE)📊 Staging 상태$(NC)"
-	@eb status staging
-
 prod-status:
 	@echo "$(BLUE)📊 Production 상태$(NC)"
 	@eb status production
 
-status-all: dev-status rel-status prod-status
+status-all: dev-status prod-status
 
 # 헬스 체크
 dev-health:
 	@echo "$(BLUE)🏥 Development 헬스$(NC)"
 	@eb health development
 
-rel-health:
-	@echo "$(BLUE)🏥 Staging 헬스$(NC)"
-	@eb health staging
-
 prod-health:
 	@echo "$(BLUE)🏥 Production 헬스$(NC)"
 	@eb health production
 
-health-all: dev-health rel-health prod-health
+health-all: dev-health prod-health
 
 # 로그 확인
 logs-dev:
 	@eb logs development
-
-logs-rel:
-	@eb logs staging
 
 logs-prod:
 	@eb logs production
@@ -1004,18 +1008,11 @@ switch-main:
 
 # 브랜치 동기화
 sync-dev-to-rel:
-	@echo "$(YELLOW)🔄 dev → rel 동기화$(NC)"
+	@echo "$(YELLOW)🔄 dev → rel 동기화 (Production 배포 준비)$(NC)"
 	@git checkout rel
 	@git pull origin rel
 	@git merge origin/dev
 	@git push origin rel
-
-sync-rel-to-main:
-	@echo "$(YELLOW)🔄 rel → main 동기화$(NC)"
-	@git checkout main
-	@git pull origin main
-	@git merge origin/rel
-	@git push origin main
 
 # 환경 정보
 info:
@@ -1025,9 +1022,9 @@ info:
 	@echo "마지막 커밋: $(shell git log -1 --oneline 2>/dev/null || echo '알 수 없음')"
 	@echo ""
 	@echo "EB 환경:"
-	@echo "  Development: development"
-	@echo "  Staging: staging"
-	@echo "  Production: production"
+	@echo "  Development: development (dev 브랜치)"
+	@echo "  Production: production (rel 브랜치)"
+	@echo "  Archive: main (아카이브용)"
 ```
 
 ### 6.3 개발 워크플로우 스크립트
@@ -1063,20 +1060,16 @@ show_workflow_help() {
     echo "   git checkout dev"
     echo "   make deploy-dev"
     echo ""
-    echo "3️⃣  스테이징 배포:"
+    echo "3️⃣  프로덕션 배포:"
     echo "   # dev → rel PR 생성 및 머지"
-    echo "   # PR 머지 후 자동으로 Staging 환경에 배포됨"
-    echo "   # 또는 수동 배포:"
-    echo "   git checkout rel"
-    echo "   make deploy-rel"
-    echo ""
-    echo "4️⃣  프로덕션 배포:"
-    echo "   # QA 테스트 완료 후"
-    echo "   # rel → main PR 생성 및 머지"
     echo "   # PR 머지 후 자동으로 Production 환경에 배포됨"
     echo "   # 또는 수동 배포:"
-    echo "   git checkout main"
+    echo "   git checkout rel"
     echo "   make deploy-prod"
+    echo ""
+    echo "4️⃣  아카이브 (필요시):"
+    echo "   # 주요 릴리즈를 main 브랜치에 아카이브"
+    echo "   # GitHub Actions에서 수동 실행"
     echo ""
     echo -e "${YELLOW}💡 유용한 명령어:${NC}"
     echo "   make help              # 모든 명령어 보기"
@@ -1107,14 +1100,11 @@ case "$1" in
                 make deploy-dev
                 ;;
             "rel")
-                make deploy-rel
-                ;;
-            "main")
                 make deploy-prod
                 ;;
             *)
                 echo -e "${RED}❌ 현재 브랜치($CURRENT_BRANCH)에서는 배포할 수 없습니다.${NC}"
-                echo "dev, rel, main 브랜치에서만 배포 가능합니다."
+                echo "dev(Development), rel(Production) 브랜치에서만 배포 가능합니다."
                 ;;
         esac
         ;;
@@ -1207,16 +1197,8 @@ git push origin feature/new-login
 
 ```bash
 # 1. dev → rel PR 생성 (GitHub에서)
-# 2. PR 머지 시 자동으로 Staging 환경에 배포됨
-# 3. QA 테스트 진행
-```
-
-**Rel → Main 워크플로우:**
-
-```bash
-# 1. QA 완료 후 rel → main PR 생성
 # 2. PR 머지 시 자동으로 Production 환경에 배포됨
-# 3. 자동으로 Release 태그 생성됨
+# 3. 프로덕션 테스트 및 모니터링
 ```
 
 ### 7.4 전체 환경 모니터링
@@ -1232,6 +1214,10 @@ make health-all
 echo "Development: $(eb status development | grep CNAME | awk '{print $2}')"
 echo "Staging: $(eb status staging | grep CNAME | awk '{print $2}')"
 echo "Production: $(eb status production | grep CNAME | awk '{print $2}')"
+
+# ALB 생성 확인
+aws elbv2 describe-load-balancers \
+    --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].{Name:LoadBalancerName,DNS:DNSName,Scheme:Scheme}'
 ```
 
 ---
@@ -1245,14 +1231,18 @@ echo "Production: $(eb status production | grep CNAME | awk '{print $2}')"
 ```yaml
 Branches → Environments:
   feature/* → 로컬 개발 (Docker)
-  dev       → Development (EB: development)
-  rel       → Staging (EB: staging)
-  main      → Production (EB: production)
+  dev       → Development (EB: development + ALB)
+  rel       → Production (EB: production + ALB) ← 최종 배포
+  main      → Archive (아카이브용)
 
 Deployment Triggers:
   PR → dev: Development 자동 배포
-  PR → rel: Staging 자동 배포
-  PR → main: Production 자동 배포 + Release 생성
+  PR → rel: Production 자동 배포 + Release 생성 (최종)
+  main: 아카이브용 (수동 실행만)
+
+HTTPS 지원:
+  모든 환경에 Application Load Balancer 포함
+  SSL 인증서 발급 후 바로 HTTPS 적용 가능
 ```
 
 ### 8.2 환경별 설정 차이점
@@ -1262,9 +1252,13 @@ Deployment Triggers:
 ```yaml
 option_settings:
   aws:autoscaling:launchconfiguration:
-    InstanceType: t3.micro # 최소 비용
+    InstanceType: t3.micro
   aws:elasticbeanstalk:environment:
-    EnvironmentType: SingleInstance
+    EnvironmentType: LoadBalanced
+    LoadBalancerType: application
+  aws:autoscaling:asg:
+    MinSize: 1
+    MaxSize: 1
   aws:elasticbeanstalk:application:environment:
     NODE_ENV: development
     LOG_LEVEL: debug
@@ -1273,14 +1267,8 @@ option_settings:
 **Staging (.ebextensions/staging-specific.config):**
 
 ```yaml
-option_settings:
-  aws:autoscaling:launchconfiguration:
-    InstanceType: t3.small
-  aws:elasticbeanstalk:environment:
-    EnvironmentType: SingleInstance
-  aws:elasticbeanstalk:application:environment:
-    NODE_ENV: staging
-    LOG_LEVEL: info
+# rel 브랜치는 이제 Production 환경이므로 staging 설정 제거
+# 필요시 별도 스테이징 환경 생성 가능
 ```
 
 **Production (.ebextensions/prod-specific.config):**
@@ -1288,13 +1276,13 @@ option_settings:
 ```yaml
 option_settings:
   aws:autoscaling:launchconfiguration:
-    InstanceType: t3.small
+    InstanceType: t3.medium
   aws:elasticbeanstalk:environment:
     EnvironmentType: LoadBalanced
     LoadBalancerType: application
   aws:autoscaling:asg:
-    MinSize: 1
-    MaxSize: 3
+    MinSize: 2
+    MaxSize: 5
   aws:elasticbeanstalk:application:environment:
     NODE_ENV: production
     LOG_LEVEL: warn
@@ -1354,6 +1342,7 @@ chore: 빌드 과정 또는 보조 기능 수정
 - [ ] 헬스체크 정상
 - [ ] 주요 기능 동작 확인
 - [ ] 로그 에러 없음
+- [ ] HTTPS 접속 확인 (해당시)
 ```
 
 ### 8.4 모니터링 및 알람 설정
@@ -1377,6 +1366,19 @@ cat > cloudwatch-dashboard.json << 'EOF'
                 "stat": "Average",
                 "region": "ap-northeast-2",
                 "title": "Application Latency"
+            }
+        },
+        {
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "awseb-AWSEB-*"],
+                    ["AWS/ApplicationELB", "HTTPCode_Target_2XX_Count", "LoadBalancer", "awseb-AWSEB-*"]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "ap-northeast-2",
+                "title": "ALB Request Count"
             }
         }
     ]
@@ -1404,59 +1406,59 @@ aws cloudwatch put-metric-alarm \
     --comparison-operator GreaterThanThreshold \
     --dimensions Name=EnvironmentName,Value=production
 
-# Application Requests 알람
+# ALB Target Health 알람
 aws cloudwatch put-metric-alarm \
-    --alarm-name "Production-LowRequests" \
-    --alarm-description "Production Low Request Count" \
-    --metric-name ApplicationRequests \
-    --namespace AWS/ElasticBeanstalk \
-    --statistic Sum \
+    --alarm-name "Production-UnhealthyTargets" \
+    --alarm-description "Production Unhealthy ALB Targets" \
+    --metric-name UnHealthyHostCount \
+    --namespace AWS/ApplicationELB \
+    --statistic Average \
     --period 300 \
-    --threshold 10 \
-    --comparison-operator LessThanThreshold \
-    --dimensions Name=EnvironmentName,Value=production
+    --threshold 1 \
+    --comparison-operator GreaterThanOrEqualToThreshold
 ```
 
 ---
 
 ## 📋 완료 체크리스트
 
-### 브랜치 전략 설정
+### 브랜치 전략 및 기본 설정
 
 - [ ] AWS 계정 및 IAM 사용자 생성
+- [ ] **IAMFullAccess 정책 추가** (중요!)
 - [ ] AWS CLI 및 EB CLI 설치
+- [ ] 필수 서비스 롤 생성 (선택사항)
 - [ ] NestJS 프로젝트 생성
 - [ ] Dockerfile 및 .dockerignore 작성
-- [ ] .ebextensions 폴더 설정
+- [ ] .ebextensions 폴더 설정 (ALB + 서비스 롤 포함)
 
 ### 브랜치 및 환경 설정
 
 - [ ] dev, rel, main 브랜치 생성
 - [ ] GitHub 브랜치 보호 규칙 설정
-- [ ] Development 환경 생성 (development)
-- [ ] Staging 환경 생성 (staging)
-- [ ] Production 환경 생성 (production)
+- [ ] Development 환경 생성 (ALB 포함)
+- [ ] Production 환경 생성 (ALB 포함)
 
 ### CI/CD 파이프라인
 
 - [ ] GitHub Secrets 설정 (AWS_ACCESS_KEY, AWS_ACCESS_SECRET_KEY)
 - [ ] deploy-dev.yml 워크플로우 설정
-- [ ] deploy-rel.yml 워크플로우 설정
-- [ ] deploy-production.yml 워크플로우 설정
+- [ ] deploy-rel.yml 워크플로우 설정 (Production 배포용)
+- [ ] deploy-production.yml 워크플로우 설정 (아카이브용)
 - [ ] PR 템플릿 생성
 
 ### 배포 스크립트
 
 - [ ] deploy-dev.sh 스크립트 생성
-- [ ] deploy-rel.sh 스크립트 생성
-- [ ] deploy-prod.sh 스크립트 생성
+- [ ] deploy-rel.sh 스크립트 생성 (Production 배포용)
 - [ ] Makefile 설정 (브랜치별 명령어)
 - [ ] workflow.sh 헬퍼 스크립트 생성
 
-### 선택 설정
+### HTTPS 및 고급 설정
 
-- [ ] HTTPS 인증서 설정
-- [ ] 도메인 연결
+- [ ] ALB 생성 확인 (모든 환경)
+- [ ] HTTPS 인증서 설정 (필요시)
+- [ ] 도메인 연결 (필요시)
 - [ ] CloudWatch 모니터링
 - [ ] 알람 설정
 
@@ -1467,10 +1469,38 @@ aws cloudwatch put-metric-alarm \
 - [ ] GitHub PR 워크플로우 테스트
 - [ ] 브랜치별 자동 배포 확인
 - [ ] 로그 정상 출력 확인
+- [ ] ALB 정상 동작 확인
 
 ---
 
 ## 🚨 트러블슈팅
+
+### ALB 및 HTTPS 관련
+
+#### 1. ALB 생성 확인
+
+```bash
+# ALB 목록 확인
+aws elbv2 describe-load-balancers \
+    --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)].{Name:LoadBalancerName,DNS:DNSName,State:State}'
+
+# ALB 타겟 그룹 상태 확인
+aws elbv2 describe-target-health \
+    --target-group-arn $(aws elbv2 describe-target-groups --query 'TargetGroups[0].TargetGroupArn' --output text)
+```
+
+#### 2. HTTPS 인증서 문제
+
+```bash
+# 인증서 상태 확인
+aws acm list-certificates \
+    --query 'CertificateSummaryList[*].{Domain:DomainName,Status:Status,Arn:CertificateArn}'
+
+# DNS 검증 레코드 확인
+aws acm describe-certificate \
+    --certificate-arn YOUR-CERT-ARN \
+    --query 'Certificate.DomainValidationOptions'
+```
 
 ### 브랜치 전략 관련
 
@@ -1542,11 +1572,25 @@ make status-all
 make health-all
 ```
 
+#### 3. ALB 헬스체크 실패
+
+```bash
+# ALB 타겟 그룹 헬스체크 확인
+eb health production
+
+# 애플리케이션 헬스체크 엔드포인트 테스트
+curl http://your-alb-dns/health
+
+# ALB 리스너 규칙 확인
+aws elbv2 describe-rules \
+    --listener-arn $(aws elbv2 describe-listeners --load-balancer-arn YOUR-ALB-ARN --query 'Listeners[0].ListenerArn' --output text)
+```
+
 ---
 
 ## 🎉 완료!
 
-이제 완전한 **브랜치 전략 기반 NestJS + Docker + Elastic Beanstalk + CI/CD** 환경이 구축되었습니다!
+이제 완전한 **브랜치 전략 기반 NestJS + Docker + Elastic Beanstalk + ALB + HTTPS 지원 + CI/CD** 환경이 구축되었습니다!
 
 ### 🚀 일반적인 개발 워크플로우
 
@@ -1563,23 +1607,15 @@ git push origin feature/login-improvement
 **2. 개발 환경 테스트:**
 
 ```bash
-# PR 머지 시 자동 배포됨
+# PR 머지 시 자동 배포됨 (ALB 포함)
 # 또는 수동: make deploy-dev
 ```
 
-**3. 스테이징 배포:**
+**3. 프로덕션 배포:**
 
 ```bash
 # dev → rel PR 생성 및 머지
-# PR 머지 시 자동 배포됨
-# 또는 수동: make deploy-rel
-```
-
-**4. 프로덕션 배포:**
-
-```bash
-# QA 완료 후 rel → main PR 생성 및 머지
-# PR 머지 시 자동 배포됨 + Release 생성
+# PR 머지 시 자동 배포됨 + Release 생성 (ALB 포함)
 # 또는 수동: make deploy-prod
 ```
 
@@ -1593,7 +1629,6 @@ make health-all
 
 # 브랜치별 배포
 make deploy-dev MSG="새 기능 테스트"
-make deploy-rel MSG="QA 요청"
 make deploy-prod MSG="v1.2.0 릴리즈"
 
 # 워크플로우 도움말
@@ -1601,6 +1636,25 @@ make deploy-prod MSG="v1.2.0 릴리즈"
 
 # 빠른 개발 시작
 ./workflow.sh feature my-new-feature
+
+# ALB 상태 확인
+aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `awseb`)]'
 ```
 
+### 🔒 HTTPS 활성화
+
+SSL 인증서 발급 후:
+
+1. `.ebextensions/05-https.config` 파일에 인증서 ARN 입력
+2. `eb deploy` 실행
+3. HTTPS 접속 확인
+
 완벽한 엔터프라이즈급 개발 환경이 완성되었습니다! 🎊
+
+**주요 특징:**
+
+- ✅ 모든 환경에 ALB 포함 (HTTPS 준비 완료)
+- ✅ 브랜치 전략 기반 자동 배포
+- ✅ 고가용성 프로덕션 환경
+- ✅ 포괄적인 모니터링 및 알람
+- ✅ 완전 자동화된 CI/CD 파이프라인
